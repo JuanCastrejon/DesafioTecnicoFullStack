@@ -157,6 +157,17 @@ Puertos en modo Docker Compose:
 	- Se ejecuta en push a main
 	- Construye imagen Docker del backend
 
+## Pruebas locales reproducibles
+
+Sin depender de variables implicitas como `PYTHONPATH`:
+
+```powershell
+Set-Location "desafio-tecnico-full-stack"
+c:/Users/juand/source/repos/DesafioTecnicoFullStack/.venv/Scripts/python.exe -m pytest backend/tests -q
+```
+
+Este comando replica el mismo esquema de imports esperado en CI y en contenedor.
+
 ## Deploy en Vercel + Supabase
 
 Prerrequisitos:

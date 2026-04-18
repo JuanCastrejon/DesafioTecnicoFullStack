@@ -33,6 +33,16 @@ Prueba tecnica full stack con:
 - Swagger: http://localhost:8000/docs
 - Cliente PHP: http://localhost:8080
 
+## Cliente PHP (demo)
+
+- Archivo principal: `php-client/index.php`
+- Tecnologias: PHP 8 + jQuery + Bootstrap
+- Funcionalidad: listado paginado, filtros por fecha, estados (loading/error/vacio) y modal de detalle
+
+Variable opcional para apuntar a otra API:
+
+- `API_BASE_URL` (por defecto `http://localhost:8000`)
+
 ## Modelo de ramas
 
 - main: produccion

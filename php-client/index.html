@@ -136,8 +136,17 @@
     crossorigin="anonymous"
   ></script>
   <script>
-    const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const API_BASE_URL = isLocalHost ? 'http://127.0.0.1:8010' : 'https://desafio-tecnico-full-stack.vercel.app';
+    const hostname = window.location.hostname;
+    const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isVercelPreviewPhpClient = hostname.startsWith('php-client-git-') && hostname.endsWith('.vercel.app');
+    const previewApiHost = isVercelPreviewPhpClient
+      ? hostname.replace(/^php-client-git-/, 'desafio-tecnico-full-stack-git-')
+      : '';
+    const API_BASE_URL = isLocalHost
+      ? 'http://127.0.0.1:8010'
+      : isVercelPreviewPhpClient
+        ? `https://${previewApiHost}`
+        : 'https://desafio-tecnico-full-stack.vercel.app';
 
     const state = {
       page: 1,

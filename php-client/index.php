@@ -1,5 +1,14 @@
 <?php
-$apiBaseUrl = getenv('API_BASE_URL') ?: 'http://127.0.0.1:8010';
+$apiBaseUrl = getenv('API_BASE_URL');
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$isVercelPreviewPhpClient = str_starts_with($host, 'php-client-git-') && str_ends_with($host, '.vercel.app');
+
+if ($apiBaseUrl === false || $apiBaseUrl === '' || $apiBaseUrl === null) {
+  $apiBaseUrl = $isVercelPreviewPhpClient
+    ? 'https://desafio-tecnico-full-stack.vercel.app'
+    : 'http://127.0.0.1:8010';
+}
+
 $apiBaseUrl = rtrim($apiBaseUrl, '/');
 ?>
 <!DOCTYPE html>

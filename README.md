@@ -15,6 +15,13 @@ Prueba tecnica full stack con:
 - .github/workflows/ci.yml: pruebas y build de Docker
 - vercel.json: enrutamiento y runtime de Vercel
 
+## Persistencia de eventos
+
+- Fuente principal: PostgreSQL (Supabase o DB local)
+- Inicializacion automatica de tabla `events` con seed de 10.000 registros
+- Indices para consulta eficiente por fecha y orden compuesto (`event_date`, `event_date + id`)
+- Fallback en memoria solo cuando la DB no esta disponible (para no bloquear la demo local)
+
 ## Inicio rapido
 
 1. Copiar archivo de variables de entorno:

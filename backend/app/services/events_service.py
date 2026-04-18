@@ -1,6 +1,11 @@
 from bisect import bisect_left, bisect_right
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
+from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.db.session import SessionLocal
+from app.models.event import Event
 from app.schemas.event import EventDetail, EventListResponse, EventLocation, EventSummary, PaginationMeta
 
 
@@ -25,12 +30,98 @@ SEED_EVENT_DATES = [item.date.date() for item in SEED_EVENTS]
 EVENTS_BY_ID = {item.id: item for item in SEED_EVENTS}
 
 
+def _to_event_summary(event: Event) -> EventSummary:
+    return EventSummary(
+        id=event.id,
+        title=event.title,
+        date=event.event_date,
+    )
+
+
+def _to_event_detail(event: Event) -> EventDetail:
+    return EventDetail(
+        id=event.id,
+        title=event.title,
+        description=event.description,
+        date=event.event_date,
+        location=EventLocation(
+            lat=event.lat,
+            lng=event.lng,
+            address=event.address,
+        ),
+    )
+
+
+def _list_events_paginated_from_db(
+    page: int,
+    size: int,
+    from_date: date | None,
+    to_date: date | None,
+) -> EventListResponse:
+    filters = []
+
+    if from_date is not None:
+        from_dt = datetime.combine(from_date, time.min, tzinfo=timezone.utc)
+        filters.append(Event.event_date >= from_dt)
+
+    if to_date is not None:
+        to_dt_exclusive = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=timezone.utc)
+        filters.append(Event.event_date < to_dt_exclusive)
+
+    offset = (page - 1) * size
+
+    with SessionLocal() as db:
+        count_stmt = select(func.count(Event.id))
+        data_stmt = select(Event)
+
+        if filters:
+            count_stmt = count_stmt.where(*filters)
+            data_stmt = data_stmt.where(*filters)
+
+        total = db.scalar(count_stmt) or 0
+
+        records = (
+            db.execute(
+                data_stmt
+                .order_by(Event.event_date.desc(), Event.id.desc())
+                .offset(offset)
+                .limit(size)
+            )
+            .scalars()
+            .all()
+        )
+
+    return EventListResponse(
+        data=[_to_event_summary(item) for item in records],
+        meta=PaginationMeta(page=page, size=size, total=total),
+    )
+
+
+def _get_event_detail_from_db(event_id: int) -> EventDetail | None:
+    with SessionLocal() as db:
+        event = db.get(Event, event_id)
+        if event is None:
+            return None
+
+    return _to_event_detail(event)
+
+
 def list_events_paginated(
     page: int,
     size: int,
     from_date: date | None,
     to_date: date | None,
 ) -> EventListResponse:
+    try:
+        return _list_events_paginated_from_db(
+            page=page,
+            size=size,
+            from_date=from_date,
+            to_date=to_date,
+        )
+    except SQLAlchemyError:
+        pass
+
     start_index = 0
     end_index = len(SEED_EVENTS)
 
@@ -60,6 +151,11 @@ def list_events_paginated(
 
 
 def get_event_detail_by_id(event_id: int) -> EventDetail | None:
+    try:
+        return _get_event_detail_from_db(event_id)
+    except SQLAlchemyError:
+        pass
+
     event_summary = EVENTS_BY_ID.get(event_id)
     if event_summary is None:
         return None

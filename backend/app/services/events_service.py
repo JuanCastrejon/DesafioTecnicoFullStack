@@ -1,13 +1,25 @@
 from bisect import bisect_left, bisect_right
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+import logging
 
-from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.db.session import SessionLocal
+from app.core.config import get_settings
 from app.models.event import Event
-from app.schemas.event import EventDetail, EventListResponse, EventLocation, EventSummary, PaginationMeta
+from app.repositories.events_repository import EventRepository
+from app.schemas.event import (
+    EventDetail,
+    EventListResponse,
+    EventLocation,
+    EventSummary,
+    PaginationMeta,
+)
 from app.services.cache import InMemoryTTLCache
+
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
+event_repository = EventRepository()
 
 
 def _build_seed_events(total: int = 10_000) -> list[EventSummary]:
@@ -33,7 +45,9 @@ EVENTS_BY_ID = {item.id: item for item in SEED_EVENTS}
 # Cache dedicado de respuestas frecuentes (bonus):
 # - listado: TTL corto para filtros/paginacion repetidos
 # - detalle: TTL mayor para lecturas por id
-LIST_EVENTS_CACHE = InMemoryTTLCache[tuple[int, int, date | None, date | None], EventListResponse](
+LIST_EVENTS_CACHE = InMemoryTTLCache[
+    tuple[int, int, date | None, date | None], EventListResponse
+](
     max_size=256,
     ttl_seconds=30,
 )
@@ -71,38 +85,12 @@ def _list_events_paginated_from_db(
     from_date: date | None,
     to_date: date | None,
 ) -> EventListResponse:
-    filters = []
-
-    if from_date is not None:
-        from_dt = datetime.combine(from_date, time.min, tzinfo=timezone.utc)
-        filters.append(Event.event_date >= from_dt)
-
-    if to_date is not None:
-        to_dt_exclusive = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=timezone.utc)
-        filters.append(Event.event_date < to_dt_exclusive)
-
-    offset = (page - 1) * size
-
-    with SessionLocal() as db:
-        count_stmt = select(func.count(Event.id))
-        data_stmt = select(Event)
-
-        if filters:
-            count_stmt = count_stmt.where(*filters)
-            data_stmt = data_stmt.where(*filters)
-
-        total = db.scalar(count_stmt) or 0
-
-        records = (
-            db.execute(
-                data_stmt
-                .order_by(Event.event_date.desc(), Event.id.desc())
-                .offset(offset)
-                .limit(size)
-            )
-            .scalars()
-            .all()
-        )
+    records, total = event_repository.list_events_paginated(
+        page=page,
+        size=size,
+        from_date=from_date,
+        to_date=to_date,
+    )
 
     return EventListResponse(
         data=[_to_event_summary(item) for item in records],
@@ -111,10 +99,9 @@ def _list_events_paginated_from_db(
 
 
 def _get_event_detail_from_db(event_id: int) -> EventDetail | None:
-    with SessionLocal() as db:
-        event = db.get(Event, event_id)
-        if event is None:
-            return None
+    event = event_repository.get_event_by_id(event_id)
+    if event is None:
+        return None
 
     return _to_event_detail(event)
 
@@ -140,7 +127,28 @@ def list_events_paginated(
         LIST_EVENTS_CACHE.set(cache_key, response)
         return response
     except SQLAlchemyError:
-        pass
+        logger.exception(
+            "list_events database query failed",
+            extra={
+                "page": page,
+                "size": size,
+                "from": from_date.isoformat() if from_date else None,
+                "to": to_date.isoformat() if to_date else None,
+                "fallback_enabled": settings.enable_in_memory_fallback,
+            },
+        )
+        if not settings.enable_in_memory_fallback:
+            raise
+
+    logger.warning(
+        "list_events using in-memory fallback",
+        extra={
+            "page": page,
+            "size": size,
+            "from": from_date.isoformat() if from_date else None,
+            "to": to_date.isoformat() if to_date else None,
+        },
+    )
 
     start_index = 0
     end_index = len(SEED_EVENTS)
@@ -183,7 +191,19 @@ def get_event_detail_by_id(event_id: int) -> EventDetail | None:
             EVENT_DETAIL_CACHE.set(event_id, detail)
         return detail
     except SQLAlchemyError:
-        pass
+        logger.exception(
+            "get_event_detail database query failed",
+            extra={
+                "event_id": event_id,
+                "fallback_enabled": settings.enable_in_memory_fallback,
+            },
+        )
+        if not settings.enable_in_memory_fallback:
+            raise
+
+    logger.warning(
+        "get_event_detail using in-memory fallback", extra={"event_id": event_id}
+    )
 
     event_summary = EVENTS_BY_ID.get(event_id)
     if event_summary is None:

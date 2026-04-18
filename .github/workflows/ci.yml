@@ -27,6 +27,8 @@ jobs:
 
     env:
       APP_ENV: test
+      ENABLE_IN_MEMORY_FALLBACK: "false"
+      ENABLE_DB_INTEGRATION_TESTS: "true"
       DB_HOST: localhost
       DB_PORT: 5432
       DB_USER: postgres
@@ -48,9 +50,23 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
+          pip install ruff pytest-cov
+
+      - name: Lint (ruff)
+        run: ruff check backend
+
+      - name: Format check (ruff)
+        run: |
+          ruff format --check backend/app/core/config.py
+          ruff format --check backend/app/db/bootstrap.py
+          ruff format --check backend/app/repositories/events_repository.py
+          ruff format --check backend/app/services/events_service.py
+          ruff format --check backend/tests/conftest.py
+          ruff format --check backend/tests/test_fallback_behavior.py
+          ruff format --check backend/tests/test_events_db_integration.py
 
       - name: Run tests
-        run: pytest backend/tests -q
+        run: pytest backend/tests -q --cov=backend/app --cov-report=term-missing --cov-fail-under=70
 
   docker-build:
     runs-on: ubuntu-latest

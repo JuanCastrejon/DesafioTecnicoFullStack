@@ -109,6 +109,21 @@ c:/Users/juand/source/repos/DesafioTecnicoFullStack/.venv/Scripts/python.exe -m 
 - Demo PHP: http://127.0.0.1:8089/index.php
 - Demo HTML: http://127.0.0.1:8090/index.html
 
+## Dev Container (opcional recomendado)
+
+Para facilitar la evaluacion tecnica en entorno reproducible, el repositorio incluye configuracion Dev Container en:
+- [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json)
+
+Pasos:
+1. Abrir el repositorio en VS Code.
+2. Ejecutar el comando: Dev Containers: Reopen in Container.
+3. Esperar la provision inicial (instala PHP CLI y dependencias Python del backend).
+4. Ejecutar los mismos comandos de la seccion Levantar localmente.
+
+Notas:
+- Esta opcion no reemplaza Docker Compose ni modo local tradicional; es una alternativa para estandarizar el entorno del evaluador.
+- Los puertos 8010, 8089, 8090 y 8000 quedan expuestos para API y demos.
+
 ## Levantar con Docker Compose
 
 1. Copiar variables de entorno:

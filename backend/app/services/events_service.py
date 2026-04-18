@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 
-from app.schemas.event import EventListResponse, EventSummary, PaginationMeta
+from app.schemas.event import EventDetail, EventListResponse, EventLocation, EventSummary, PaginationMeta
 
 
 def _build_seed_events(total: int = 120) -> list[EventSummary]:
@@ -45,4 +45,22 @@ def list_events_paginated(
     return EventListResponse(
         data=page_items,
         meta=PaginationMeta(page=page, size=size, total=total),
+    )
+
+
+def get_event_detail_by_id(event_id: int) -> EventDetail | None:
+    event_summary = next((item for item in SEED_EVENTS if item.id == event_id), None)
+    if event_summary is None:
+        return None
+
+    return EventDetail(
+        id=event_summary.id,
+        title=event_summary.title,
+        description=f"Detalle del {event_summary.title}",
+        date=event_summary.date,
+        location=EventLocation(
+            lat=4.6 + (event_summary.id * 0.001),
+            lng=-74.1 - (event_summary.id * 0.001),
+            address=f"Direccion evento {event_summary.id}, Bogota",
+        ),
     )

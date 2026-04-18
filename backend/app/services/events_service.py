@@ -1,9 +1,10 @@
+from bisect import bisect_left, bisect_right
 from datetime import date, datetime, timedelta, timezone
 
 from app.schemas.event import EventDetail, EventListResponse, EventLocation, EventSummary, PaginationMeta
 
 
-def _build_seed_events(total: int = 120) -> list[EventSummary]:
+def _build_seed_events(total: int = 10_000) -> list[EventSummary]:
     base = datetime(2025, 1, 1, 8, 0, tzinfo=timezone.utc)
     events: list[EventSummary] = []
 
@@ -20,6 +21,8 @@ def _build_seed_events(total: int = 120) -> list[EventSummary]:
 
 
 SEED_EVENTS = _build_seed_events()
+SEED_EVENT_DATES = [item.date.date() for item in SEED_EVENTS]
+EVENTS_BY_ID = {item.id: item for item in SEED_EVENTS}
 
 
 def list_events_paginated(
@@ -28,15 +31,23 @@ def list_events_paginated(
     from_date: date | None,
     to_date: date | None,
 ) -> EventListResponse:
-    filtered = SEED_EVENTS
+    start_index = 0
+    end_index = len(SEED_EVENTS)
 
     if from_date is not None:
-        filtered = [item for item in filtered if item.date.date() >= from_date]
+        start_index = bisect_left(SEED_EVENT_DATES, from_date)
 
     if to_date is not None:
-        filtered = [item for item in filtered if item.date.date() <= to_date]
+        end_index = bisect_right(SEED_EVENT_DATES, to_date)
 
-    ordered = sorted(filtered, key=lambda item: (item.date, item.id), reverse=True)
+    if start_index >= end_index:
+        return EventListResponse(
+            data=[],
+            meta=PaginationMeta(page=page, size=size, total=0),
+        )
+
+    filtered = SEED_EVENTS[start_index:end_index]
+    ordered = list(reversed(filtered))
 
     total = len(ordered)
     offset = (page - 1) * size
@@ -49,7 +60,7 @@ def list_events_paginated(
 
 
 def get_event_detail_by_id(event_id: int) -> EventDetail | None:
-    event_summary = next((item for item in SEED_EVENTS if item.id == event_id), None)
+    event_summary = EVENTS_BY_ID.get(event_id)
     if event_summary is None:
         return None
 

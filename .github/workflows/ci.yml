@@ -28,6 +28,9 @@ jobs:
     env:
       APP_ENV: test
       ENABLE_IN_MEMORY_FALLBACK: "false"
+      RUN_DB_BOOTSTRAP: "true"
+      SEED_EVENTS: "true"
+      SEED_EVENTS_TOTAL: "10000"
       ENABLE_DB_INTEGRATION_TESTS: "true"
       DB_HOST: localhost
       DB_PORT: 5432

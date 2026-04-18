@@ -2,14 +2,21 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi import HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.routes.events import router as events_router
 from app.core.config import get_settings
-from app.core.exceptions import http_exception_handler, unhandled_exception_handler, validation_exception_handler
+from app.core.exceptions import (
+    http_exception_handler,
+    unhandled_exception_handler,
+    validation_exception_handler,
+)
 from app.core.logging import RequestIdMiddleware, configure_logging
+from app.db.health import ensure_database_ready
 from app.db.bootstrap import init_events_storage
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -23,6 +30,7 @@ logger = logging.getLogger(__name__)
 async def app_lifespan(app: FastAPI):
     init_events_storage()
     yield
+
 
 app = FastAPI(
     title="OverThere Events API",
@@ -39,7 +47,9 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 
 app.add_middleware(RequestIdMiddleware)
 
-allowed_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+allowed_origins = [
+    origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -54,9 +64,30 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/ready", tags=["health"])
+def readiness() -> dict[str, str]:
+    try:
+        ensure_database_ready()
+    except SQLAlchemyError:
+        logger.warning(
+            "database readiness check failed",
+            extra={"fallback_enabled": settings.enable_in_memory_fallback},
+        )
+        if settings.enable_in_memory_fallback:
+            return {
+                "status": "degraded",
+                "database": "unavailable",
+                "fallback": "enabled",
+            }
+
+        raise HTTPException(status_code=503, detail="database unavailable")
+
+    return {"status": "ok", "database": "ready"}
+
+
 @app.get("/", include_in_schema=False)
 def root_redirect_to_docs() -> RedirectResponse:
-        return RedirectResponse(url="/docs", status_code=307)
+    return RedirectResponse(url="/docs", status_code=307)
 
 
 @app.get("/docs", include_in_schema=False)

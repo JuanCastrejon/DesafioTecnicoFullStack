@@ -15,10 +15,10 @@ Cumplido.
 
 - GET /events con paginacion y filtro por rango de fechas
 - GET /events/{id} para detalle
+- GET /ready para disponibilidad operativa de la API y verificacion de base de datos
 - Escalabilidad base con paginacion y modelo de persistencia en PostgreSQL
 - Swagger disponible en /docs
-- Bonus implementado: cache dedicado en memoria (TTL + LRU) para respuestas frecuentes de listado y detalle
-- Fase 2 en curso: separacion adicional de responsabilidades en use-cases y repositorio, con pruebas de integracion sobre PostgreSQL
+- Bonus implementado: cache dedicado en memoria (TTL + LRU) para respuestas frecuentes de listado y detall
 
 ### Parte 2 - Arquitectura de apps moviles / enfoque tecnico (documental)
 
@@ -58,6 +58,7 @@ Cumplido.
 - backend/: API FastAPI, dominio y pruebas
 - backend/app/use_cases/: orquestacion de casos de uso de eventos
 - backend/app/ports/: contratos internos para cache y repositorio
+- backend/app/db/health.py: verificacion de disponibilidad de base de datos
 - php-client/: interfaz PHP + jQuery
 - api/index.py: entrypoint serverless para Vercel
 - .github/workflows/ci.yml: pipeline CI
@@ -157,6 +158,7 @@ docker compose --profile local-db up --build
 Puertos en modo Docker Compose:
 - API: http://localhost:8000
 - Swagger: http://localhost:8000/docs
+- Readiness operativa: http://localhost:8000/ready
 - Demo PHP: http://localhost:8080
 
 ## CI/CD
@@ -170,7 +172,7 @@ Puertos en modo Docker Compose:
 	- Ejecuta pytest con coverage minimo (70%)
 - docker-build:
 	- Se ejecuta en push a main
-	- Construye imagen Docker del backend
+	- Construye imagen Docker multi-stage del backend con healthcheck
 
 ## Pruebas locales reproducibles
 

@@ -35,6 +35,18 @@ def test_list_events_should_return_400_for_invalid_range() -> None:
     assert response.status_code == 400
 
 
+def test_event_detail_should_return_event() -> None:
+    response = client.get("/events/5")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["id"] == 5
+    assert payload["title"] == "Evento 5"
+    assert payload["location"]["address"] == "Direccion evento 5, Bogota"
+
+
 def test_event_detail_not_found() -> None:
     response = client.get("/events/1")
-    assert response.status_code == 404
+    assert response.status_code == 200
+
+    response_not_found = client.get("/events/999")
+    assert response_not_found.status_code == 404

@@ -4,7 +4,7 @@ from datetime import date
 from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas.event import EventDetail, EventListResponse
-from app.services.events_service import list_events_paginated
+from app.services.events_service import get_event_detail_by_id, list_events_paginated
 
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -42,4 +42,8 @@ def list_events(
 @router.get("/{event_id}", response_model=EventDetail)
 def get_event_detail(event_id: int) -> EventDetail:
     logger.info("get_event_detail called", extra={"event_id": event_id})
-    raise HTTPException(status_code=404, detail="event not found")
+    event_detail = get_event_detail_by_id(event_id)
+    if event_detail is None:
+        raise HTTPException(status_code=404, detail="event not found")
+
+    return event_detail

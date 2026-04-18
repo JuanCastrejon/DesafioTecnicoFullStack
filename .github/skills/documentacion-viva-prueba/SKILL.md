@@ -26,3 +26,13 @@ description: "Mantener README, docs y evidencias alineadas con el estado real de
 - [ ] Variables de entorno explicadas
 - [ ] Instrucciones de ejecución local validadas
 - [ ] Evidencia mínima de pruebas/CI
+
+## Estándar pendiente: hardening de contrato API
+
+Aplicar cuando se cierre el MVP funcional de endpoints (sin adelantar alcance antes de tiempo):
+
+- Contrato de error uniforme (`code`, `message`, `details`, `request_id`).
+- Manejadores globales de excepciones.
+- Respuestas OpenAPI documentadas para `200/400/404/422/500`.
+- Pruebas automáticas de rutas felices y negativas.
+- Logging con `request_id` en todos los errores.

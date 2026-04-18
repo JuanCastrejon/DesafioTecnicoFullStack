@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Env files and secrets
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+
+# PHP
+php-client/vendor/
+
+# Vercel
+.vercel/
+
+# Editor and OS
+.idea/
+.vscode/*
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# Test outputs
+test-results/
+
+# Documentacion interna (uso personal)
+docs/ACCESOS_Y_CONEXIONES.md
+docs/CHECKLIST_PRE_REPOSITORIO_GITHUB.md
+docs/REPOSITORIO_y_ARCHIVOS_A_SUBIR.md

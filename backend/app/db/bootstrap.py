@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import get_settings
 from app.db.session import SessionLocal, engine
+from app.db.health import ensure_database_ready
 from app.models.base import Base
 from app.models.event import Event
 
@@ -34,6 +35,15 @@ def _build_seed_events(total: int = 10_000) -> list[dict[str, object]]:
 
 
 def init_events_storage() -> None:
+    if settings.enable_in_memory_fallback:
+        try:
+            ensure_database_ready()
+        except SQLAlchemyError:
+            logger.warning(
+                "events storage bootstrap skipped because database is unavailable and fallback is enabled"
+            )
+            return
+
     try:
         Base.metadata.create_all(bind=engine)
 

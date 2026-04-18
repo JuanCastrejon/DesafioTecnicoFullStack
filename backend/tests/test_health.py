@@ -18,8 +18,21 @@ def test_list_events_should_return_empty_list() -> None:
     payload = response.json()
     assert payload["meta"]["page"] == 1
     assert payload["meta"]["size"] == 10
-    assert payload["meta"]["total"] == 0
-    assert payload["data"] == []
+    assert payload["meta"]["total"] == 120
+    assert len(payload["data"]) == 10
+
+
+def test_list_events_should_filter_by_date_range() -> None:
+    response = client.get("/events?from=2025-02-01&to=2025-02-10&page=1&size=50")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["total"] == 10
+    assert len(payload["data"]) == 10
+
+
+def test_list_events_should_return_400_for_invalid_range() -> None:
+    response = client.get("/events?from=2025-03-10&to=2025-03-01")
+    assert response.status_code == 400
 
 
 def test_event_detail_not_found() -> None:

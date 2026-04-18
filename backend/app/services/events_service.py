@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.db.session import SessionLocal
 from app.models.event import Event
 from app.schemas.event import EventDetail, EventListResponse, EventLocation, EventSummary, PaginationMeta
+from app.services.cache import InMemoryTTLCache
 
 
 def _build_seed_events(total: int = 10_000) -> list[EventSummary]:
@@ -28,6 +29,18 @@ def _build_seed_events(total: int = 10_000) -> list[EventSummary]:
 SEED_EVENTS = _build_seed_events()
 SEED_EVENT_DATES = [item.date.date() for item in SEED_EVENTS]
 EVENTS_BY_ID = {item.id: item for item in SEED_EVENTS}
+
+# Cache dedicado de respuestas frecuentes (bonus):
+# - listado: TTL corto para filtros/paginacion repetidos
+# - detalle: TTL mayor para lecturas por id
+LIST_EVENTS_CACHE = InMemoryTTLCache[tuple[int, int, date | None, date | None], EventListResponse](
+    max_size=256,
+    ttl_seconds=30,
+)
+EVENT_DETAIL_CACHE = InMemoryTTLCache[int, EventDetail | None](
+    max_size=1024,
+    ttl_seconds=60,
+)
 
 
 def _to_event_summary(event: Event) -> EventSummary:
@@ -112,13 +125,20 @@ def list_events_paginated(
     from_date: date | None,
     to_date: date | None,
 ) -> EventListResponse:
+    cache_key = (page, size, from_date, to_date)
+    cached_response = LIST_EVENTS_CACHE.get(cache_key)
+    if cached_response is not None:
+        return cached_response
+
     try:
-        return _list_events_paginated_from_db(
+        response = _list_events_paginated_from_db(
             page=page,
             size=size,
             from_date=from_date,
             to_date=to_date,
         )
+        LIST_EVENTS_CACHE.set(cache_key, response)
+        return response
     except SQLAlchemyError:
         pass
 
@@ -144,15 +164,24 @@ def list_events_paginated(
     offset = (page - 1) * size
     page_items = ordered[offset : offset + size]
 
-    return EventListResponse(
+    response = EventListResponse(
         data=page_items,
         meta=PaginationMeta(page=page, size=size, total=total),
     )
+    LIST_EVENTS_CACHE.set(cache_key, response)
+    return response
 
 
 def get_event_detail_by_id(event_id: int) -> EventDetail | None:
+    cached_detail = EVENT_DETAIL_CACHE.get(event_id)
+    if cached_detail is not None:
+        return cached_detail
+
     try:
-        return _get_event_detail_from_db(event_id)
+        detail = _get_event_detail_from_db(event_id)
+        if detail is not None:
+            EVENT_DETAIL_CACHE.set(event_id, detail)
+        return detail
     except SQLAlchemyError:
         pass
 
@@ -160,7 +189,7 @@ def get_event_detail_by_id(event_id: int) -> EventDetail | None:
     if event_summary is None:
         return None
 
-    return EventDetail(
+    detail = EventDetail(
         id=event_summary.id,
         title=event_summary.title,
         description=f"Detalle del {event_summary.title}",
@@ -171,3 +200,5 @@ def get_event_detail_by_id(event_id: int) -> EventDetail | None:
             address=f"Direccion evento {event_summary.id}, Bogota",
         ),
     )
+    EVENT_DETAIL_CACHE.set(event_id, detail)
+    return detail

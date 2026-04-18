@@ -17,6 +17,7 @@ Cumplido.
 - GET /events/{id} para detalle
 - Escalabilidad base con paginacion y modelo de persistencia en PostgreSQL
 - Swagger disponible en /docs
+- Bonus implementado: cache dedicado en memoria (TTL + LRU) para respuestas frecuentes de listado y detalle
 
 ### Parte 2 - Arquitectura de apps moviles / enfoque tecnico (documental)
 

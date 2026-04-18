@@ -20,25 +20,31 @@ No se abre ni se mergea PR hacia `develop` o `main` si hay checks fallidos en Gi
 
 1. Desarrollo local en `feature/*` con commits atómicos.
 2. Push de rama a remoto.
-3. Verificar runs/checks en GitHub:
+3. Abrir PR en modo draft para activar CI temprano.
+4. Verificar runs/checks en GitHub:
 - `gh run list --limit 10`
 - `gh run view <run_id> --log-failed` (si falla)
-4. Abrir PR hacia `develop` solo cuando CI esté en verde.
-5. Resolver observaciones de PR y revalidar checks.
-6. Merge por PR, nunca por push directo.
+5. Pasar PR a ready for review solo cuando CI esté en verde.
+6. Resolver observaciones de PR y revalidar checks.
+7. Merge por PR, nunca por push directo.
+8. Sincronizar rama local tras merge (`git checkout develop && git pull`).
 
 ## Comandos clave GitHub CLI
 
 - Estado general de PR y ramas:
   - `gh pr status`
 - Crear PR:
-  - `gh pr create --base develop --head feature/<nombre> --title "feat(...): ..." --body "..."`
+  - `gh pr create --base develop --head feature/<nombre> --title "feat(...): ..." --body "..." --draft`
+- Pasar de draft a ready:
+  - `gh pr ready <pr_number>`
 - Ver checks de un PR:
   - `gh pr checks <pr_number>`
 - Listar runs de Actions:
   - `gh run list --limit 10`
 - Inspeccionar fallo:
   - `gh run view <run_id> --log-failed`
+- Merge por squash desde CLI:
+  - `gh pr merge <pr_number> --squash --delete-branch`
 
 ## Comandos clave Supabase CLI
 
@@ -70,6 +76,15 @@ No se abre ni se mergea PR hacia `develop` o `main` si hay checks fallidos en Gi
 - `feature/*`: desarrollo.
 
 Nota: No es obligatorio crear una rama adicional `staging` para esta prueba si `develop` ya cumple ese rol. Solo crear `staging` separada si aparece un requisito explícito de entornos múltiples con promoción formal.
+
+## Protección de ramas (recomendación mínima)
+
+- Activar protección en `develop` y `main`.
+- Exigir PR para merge (sin push directo).
+- Exigir check de CI de backend en verde para permitir merge.
+- Verificar estado con API:
+  - `gh api repos/<owner>/<repo>/branches/develop/protection`
+  - `gh api repos/<owner>/<repo>/branches/main/protection`
 
 ## Checklist de trazabilidad antes de merge
 

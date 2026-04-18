@@ -16,6 +16,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 ENV PIP_NO_CACHE_DIR=1
+ENV ENABLE_IN_MEMORY_FALLBACK=false
+ENV RUN_DB_BOOTSTRAP=false
+ENV SEED_EVENTS=false
+ENV SEED_EVENTS_TOTAL=10000
 
 COPY --from=builder /wheels /wheels
 RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
@@ -25,7 +29,7 @@ COPY . ./
 RUN adduser --disabled-password --gecos "" appuser \
 	&& chown -R appuser:appuser /app
 
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
 
 USER appuser
 

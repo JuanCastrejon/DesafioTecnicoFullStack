@@ -15,9 +15,12 @@ Cumplido.
 
 - GET /events con paginacion y filtro por rango de fechas
 - GET /events/{id} para detalle
+- GET /ready para disponibilidad operativa de la API y verificacion de base de datos
 - Escalabilidad base con paginacion y modelo de persistencia en PostgreSQL
 - Swagger disponible en /docs
 - Bonus implementado: cache dedicado en memoria (TTL + LRU) para respuestas frecuentes de listado y detalle
+- Fase 2 completada: separacion adicional de responsabilidades en use-cases y repositorio, con pruebas de integracion sobre PostgreSQL
+- Fase 3 aplicada: readiness de base de datos, Docker multi-stage y health checks operativos
 
 ### Parte 2 - Arquitectura de apps moviles / enfoque tecnico (documental)
 
@@ -55,6 +58,9 @@ Cumplido.
 ## Estructura del proyecto
 
 - backend/: API FastAPI, dominio y pruebas
+- backend/app/use_cases/: orquestacion de casos de uso de eventos
+- backend/app/ports/: contratos internos para cache y repositorio
+- backend/app/db/health.py: verificacion de disponibilidad de base de datos
 - php-client/: interfaz PHP + jQuery
 - api/index.py: entrypoint serverless para Vercel
 - .github/workflows/ci.yml: pipeline CI
@@ -65,7 +71,17 @@ Cumplido.
 - Fuente principal: PostgreSQL (Supabase o DB local)
 - Inicializacion automatica de tabla events con seed de 10.000 registros
 - Indices orientados a consulta por fecha y orden compuesto
-- Fallback en memoria si la DB no esta disponible (evita bloquear demo local)
+- Fallback en memoria controlado por flag explicita (`ENABLE_IN_MEMORY_FALLBACK`)
+
+### Decisiones de demo vs produccion
+
+- Demo/local:
+	- `ENABLE_IN_MEMORY_FALLBACK=true` permite operar sin bloquear demo cuando la DB no esta disponible.
+- Produccion/CI:
+	- `ENABLE_IN_MEMORY_FALLBACK=false` (valor recomendado) para no ocultar incidentes de infraestructura.
+	- Errores SQL se registran con logging estructurado y la API responde error uniforme.
+
+Esta separacion evita el fallback silencioso y deja explicito el trade-off operativo por entorno.
 
 ## Levantar localmente (modo validado)
 
@@ -109,6 +125,21 @@ c:/Users/juand/source/repos/DesafioTecnicoFullStack/.venv/Scripts/python.exe -m 
 - Demo PHP: http://127.0.0.1:8089/index.php
 - Demo HTML: http://127.0.0.1:8090/index.html
 
+## Dev Container (opcional recomendado)
+
+Para facilitar la evaluacion tecnica en entorno reproducible, el repositorio incluye configuracion Dev Container en:
+- [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json)
+
+Pasos:
+1. Abrir el repositorio en VS Code.
+2. Ejecutar el comando: Dev Containers: Reopen in Container.
+3. Esperar la provision inicial (instala PHP CLI y dependencias Python del backend).
+4. Ejecutar los mismos comandos de la seccion Levantar localmente.
+
+Notas:
+- Esta opcion no reemplaza Docker Compose ni modo local tradicional; es una alternativa para estandarizar el entorno del evaluador.
+- Los puertos 8010, 8089, 8090 y 8000 quedan expuestos para API y demos.
+
 ## Levantar con Docker Compose
 
 1. Copiar variables de entorno:
@@ -129,6 +160,7 @@ docker compose --profile local-db up --build
 Puertos en modo Docker Compose:
 - API: http://localhost:8000
 - Swagger: http://localhost:8000/docs
+- Readiness operativa: http://localhost:8000/ready
 - Demo PHP: http://localhost:8080
 
 ## CI/CD
@@ -137,10 +169,23 @@ Puertos en modo Docker Compose:
 - test-backend:
 	- Levanta PostgreSQL de pruebas en servicio
 	- Instala dependencias
-	- Ejecuta pytest
+	- Ejecuta lint con `ruff check`
+	- Ejecuta validacion de formato con `ruff format --check`
+	- Ejecuta pytest con coverage minimo (70%)
 - docker-build:
 	- Se ejecuta en push a main
-	- Construye imagen Docker del backend
+	- Construye imagen Docker multi-stage del backend con healthcheck
+
+## Pruebas locales reproducibles
+
+Sin depender de variables implicitas como `PYTHONPATH`:
+
+```powershell
+Set-Location "desafio-tecnico-full-stack"
+c:/Users/juand/source/repos/DesafioTecnicoFullStack/.venv/Scripts/python.exe -m pytest backend/tests -q
+```
+
+Este comando replica el mismo esquema de imports esperado en CI y en contenedor.
 
 ## Deploy en Vercel + Supabase
 

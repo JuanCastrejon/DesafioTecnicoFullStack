@@ -4,12 +4,14 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.config import get_settings
 from app.db.session import SessionLocal, engine
 from app.models.base import Base
 from app.models.event import Event
 
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 def _build_seed_events(total: int = 10_000) -> list[dict[str, object]]:
@@ -42,4 +44,13 @@ def init_events_storage() -> None:
                 db.commit()
                 logger.info("events storage initialized", extra={"seed_total": 10_000})
     except SQLAlchemyError:
-        logger.info("events storage bootstrap skipped; using service fallback")
+        logger.exception(
+            "events storage bootstrap failed",
+            extra={"fallback_enabled": settings.enable_in_memory_fallback},
+        )
+        if not settings.enable_in_memory_fallback:
+            raise
+
+        logger.warning(
+            "events storage bootstrap skipped because in-memory fallback is enabled"
+        )

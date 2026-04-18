@@ -13,6 +13,7 @@ _CODE_BY_STATUS = {
     HTTPStatus.NOT_FOUND: "not_found",
     HTTPStatus.METHOD_NOT_ALLOWED: "method_not_allowed",
     HTTPStatus.UNPROCESSABLE_ENTITY: "validation_error",
+    HTTPStatus.SERVICE_UNAVAILABLE: "service_unavailable",
     HTTPStatus.INTERNAL_SERVER_ERROR: "internal_server_error",
 }
 
@@ -25,7 +26,9 @@ def _resolve_request_id(request: Request) -> str:
     return request_id_ctx.get()
 
 
-def _build_error_payload(*, code: str, message: str, request_id: str, details=None) -> dict[str, object]:
+def _build_error_payload(
+    *, code: str, message: str, request_id: str, details=None
+) -> dict[str, object]:
     return {
         "code": code,
         "message": message,
@@ -51,7 +54,9 @@ def _message_from_detail(detail) -> str:
     return "Request could not be processed"
 
 
-async def http_exception_handler(request: Request, exc: HTTPException | StarletteHTTPException) -> JSONResponse:
+async def http_exception_handler(
+    request: Request, exc: HTTPException | StarletteHTTPException
+) -> JSONResponse:
     request_id = _resolve_request_id(request)
     status_code = _http_status_code(exc)
     code = _CODE_BY_STATUS.get(HTTPStatus(status_code), "http_error")
@@ -62,10 +67,16 @@ async def http_exception_handler(request: Request, exc: HTTPException | Starlett
         request_id=request_id,
         details=detail,
     )
-    return JSONResponse(status_code=status_code, content=payload, headers=_build_error_headers(request_id))
+    return JSONResponse(
+        status_code=status_code,
+        content=payload,
+        headers=_build_error_headers(request_id),
+    )
 
 
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     request_id = _resolve_request_id(request)
     payload = _build_error_payload(
         code="validation_error",

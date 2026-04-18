@@ -1,13 +1,27 @@
-from bisect import bisect_left, bisect_right
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+import logging
 
-from sqlalchemy import func, select
-from sqlalchemy.exc import SQLAlchemyError
-
-from app.db.session import SessionLocal
+from app.core.config import get_settings
 from app.models.event import Event
-from app.schemas.event import EventDetail, EventListResponse, EventLocation, EventSummary, PaginationMeta
+from app.repositories.events_repository import EventRepository
+from app.use_cases.events import (
+    EventFallbackData,
+    GetEventDetailUseCase,
+    ListEventsUseCase,
+)
+from app.schemas.event import (
+    EventDetail,
+    EventListResponse,
+    EventLocation,
+    EventSummary,
+    PaginationMeta,
+)
 from app.services.cache import InMemoryTTLCache
+
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
+event_repository = EventRepository()
 
 
 def _build_seed_events(total: int = 10_000) -> list[EventSummary]:
@@ -27,19 +41,35 @@ def _build_seed_events(total: int = 10_000) -> list[EventSummary]:
 
 
 SEED_EVENTS = _build_seed_events()
-SEED_EVENT_DATES = [item.date.date() for item in SEED_EVENTS]
-EVENTS_BY_ID = {item.id: item for item in SEED_EVENTS}
+FALLBACK_DATA = EventFallbackData.from_events(SEED_EVENTS)
 
 # Cache dedicado de respuestas frecuentes (bonus):
 # - listado: TTL corto para filtros/paginacion repetidos
 # - detalle: TTL mayor para lecturas por id
-LIST_EVENTS_CACHE = InMemoryTTLCache[tuple[int, int, date | None, date | None], EventListResponse](
+LIST_EVENTS_CACHE = InMemoryTTLCache[
+    tuple[int, int, date | None, date | None], EventListResponse
+](
     max_size=256,
     ttl_seconds=30,
 )
 EVENT_DETAIL_CACHE = InMemoryTTLCache[int, EventDetail | None](
     max_size=1024,
     ttl_seconds=60,
+)
+
+LIST_EVENTS_USE_CASE = ListEventsUseCase(
+    repository=event_repository,
+    cache=LIST_EVENTS_CACHE,
+    settings=settings,
+    fallback_data=FALLBACK_DATA,
+    logger=logger,
+)
+EVENT_DETAIL_USE_CASE = GetEventDetailUseCase(
+    repository=event_repository,
+    cache=EVENT_DETAIL_CACHE,
+    settings=settings,
+    fallback_data=FALLBACK_DATA,
+    logger=logger,
 )
 
 
@@ -71,38 +101,12 @@ def _list_events_paginated_from_db(
     from_date: date | None,
     to_date: date | None,
 ) -> EventListResponse:
-    filters = []
-
-    if from_date is not None:
-        from_dt = datetime.combine(from_date, time.min, tzinfo=timezone.utc)
-        filters.append(Event.event_date >= from_dt)
-
-    if to_date is not None:
-        to_dt_exclusive = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=timezone.utc)
-        filters.append(Event.event_date < to_dt_exclusive)
-
-    offset = (page - 1) * size
-
-    with SessionLocal() as db:
-        count_stmt = select(func.count(Event.id))
-        data_stmt = select(Event)
-
-        if filters:
-            count_stmt = count_stmt.where(*filters)
-            data_stmt = data_stmt.where(*filters)
-
-        total = db.scalar(count_stmt) or 0
-
-        records = (
-            db.execute(
-                data_stmt
-                .order_by(Event.event_date.desc(), Event.id.desc())
-                .offset(offset)
-                .limit(size)
-            )
-            .scalars()
-            .all()
-        )
+    records, total = event_repository.list_events_paginated(
+        page=page,
+        size=size,
+        from_date=from_date,
+        to_date=to_date,
+    )
 
     return EventListResponse(
         data=[_to_event_summary(item) for item in records],
@@ -111,10 +115,9 @@ def _list_events_paginated_from_db(
 
 
 def _get_event_detail_from_db(event_id: int) -> EventDetail | None:
-    with SessionLocal() as db:
-        event = db.get(Event, event_id)
-        if event is None:
-            return None
+    event = event_repository.get_event_by_id(event_id)
+    if event is None:
+        return None
 
     return _to_event_detail(event)
 
@@ -125,80 +128,13 @@ def list_events_paginated(
     from_date: date | None,
     to_date: date | None,
 ) -> EventListResponse:
-    cache_key = (page, size, from_date, to_date)
-    cached_response = LIST_EVENTS_CACHE.get(cache_key)
-    if cached_response is not None:
-        return cached_response
-
-    try:
-        response = _list_events_paginated_from_db(
-            page=page,
-            size=size,
-            from_date=from_date,
-            to_date=to_date,
-        )
-        LIST_EVENTS_CACHE.set(cache_key, response)
-        return response
-    except SQLAlchemyError:
-        pass
-
-    start_index = 0
-    end_index = len(SEED_EVENTS)
-
-    if from_date is not None:
-        start_index = bisect_left(SEED_EVENT_DATES, from_date)
-
-    if to_date is not None:
-        end_index = bisect_right(SEED_EVENT_DATES, to_date)
-
-    if start_index >= end_index:
-        return EventListResponse(
-            data=[],
-            meta=PaginationMeta(page=page, size=size, total=0),
-        )
-
-    filtered = SEED_EVENTS[start_index:end_index]
-    ordered = list(reversed(filtered))
-
-    total = len(ordered)
-    offset = (page - 1) * size
-    page_items = ordered[offset : offset + size]
-
-    response = EventListResponse(
-        data=page_items,
-        meta=PaginationMeta(page=page, size=size, total=total),
+    return LIST_EVENTS_USE_CASE.execute(
+        page=page,
+        size=size,
+        from_date=from_date,
+        to_date=to_date,
     )
-    LIST_EVENTS_CACHE.set(cache_key, response)
-    return response
 
 
 def get_event_detail_by_id(event_id: int) -> EventDetail | None:
-    cached_detail = EVENT_DETAIL_CACHE.get(event_id)
-    if cached_detail is not None:
-        return cached_detail
-
-    try:
-        detail = _get_event_detail_from_db(event_id)
-        if detail is not None:
-            EVENT_DETAIL_CACHE.set(event_id, detail)
-        return detail
-    except SQLAlchemyError:
-        pass
-
-    event_summary = EVENTS_BY_ID.get(event_id)
-    if event_summary is None:
-        return None
-
-    detail = EventDetail(
-        id=event_summary.id,
-        title=event_summary.title,
-        description=f"Detalle del {event_summary.title}",
-        date=event_summary.date,
-        location=EventLocation(
-            lat=4.6 + (event_summary.id * 0.001),
-            lng=-74.1 - (event_summary.id * 0.001),
-            address=f"Direccion evento {event_summary.id}, Bogota",
-        ),
-    )
-    EVENT_DETAIL_CACHE.set(event_id, detail)
-    return detail
+    return EVENT_DETAIL_USE_CASE.execute(event_id)

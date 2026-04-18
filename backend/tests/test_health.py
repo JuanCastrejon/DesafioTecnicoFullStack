@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.api.routes import events as events_route_module
+from app import main as app_main
 from app.main import app
 
 
@@ -21,6 +22,53 @@ def test_health_should_return_ok() -> None:
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_ready_should_return_ok_when_database_is_available(monkeypatch) -> None:
+    monkeypatch.setattr(app_main, "ensure_database_ready", lambda: None)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "database": "ready"}
+
+
+def test_ready_should_return_degraded_when_database_is_unavailable_and_fallback_enabled(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(app_main.settings, "enable_in_memory_fallback", True)
+
+    def raise_db_error() -> None:
+        raise app_main.SQLAlchemyError("db unavailable")
+
+    monkeypatch.setattr(app_main, "ensure_database_ready", raise_db_error)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "degraded",
+        "database": "unavailable",
+        "fallback": "enabled",
+    }
+
+
+def test_ready_should_return_503_when_database_is_unavailable_and_fallback_disabled(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(app_main.settings, "enable_in_memory_fallback", False)
+
+    def raise_db_error() -> None:
+        raise app_main.SQLAlchemyError("db unavailable")
+
+    monkeypatch.setattr(app_main, "ensure_database_ready", raise_db_error)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+    payload = get_error_payload(response)
+    assert payload["code"] == "service_unavailable"
+    assert payload["message"] == "database unavailable"
 
 
 def test_root_should_redirect_to_docs() -> None:
@@ -102,7 +150,9 @@ def test_unhandled_exception_should_return_uniform_500_response(monkeypatch) -> 
     def raise_runtime_error(*args, **kwargs):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(events_route_module, "list_events_paginated", raise_runtime_error)
+    monkeypatch.setattr(
+        events_route_module, "list_events_paginated", raise_runtime_error
+    )
 
     failing_client = TestClient(app, raise_server_exceptions=False)
     response = failing_client.get("/events?page=1&size=10")

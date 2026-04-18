@@ -41,5 +41,5 @@ def init_events_storage() -> None:
                 db.bulk_insert_mappings(Event, _build_seed_events())
                 db.commit()
                 logger.info("events storage initialized", extra={"seed_total": 10_000})
-    except SQLAlchemyError as exc:
-        logger.warning("events storage bootstrap skipped", extra={"error": str(exc)})
+    except SQLAlchemyError:
+        logger.info("events storage bootstrap skipped; using service fallback")

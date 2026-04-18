@@ -11,51 +11,27 @@
     crossorigin="anonymous"
   />
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <style>
-    body {
-      background: linear-gradient(180deg, #f5f7fb 0%, #eef2f8 100%);
-      min-height: 100vh;
-    }
-
-    .app-shell {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 32px 16px 48px;
-    }
-
-    .card-soft {
-      border: 0;
-      border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(20, 32, 62, 0.08);
-    }
-
-    .table-wrap {
-      max-height: 560px;
-      overflow: auto;
-    }
-
-    .clickable-row {
-      cursor: pointer;
-    }
-
-    .status-pill {
-      display: inline-block;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 0.875rem;
-      background: #eaf2ff;
-      color: #1f4e9f;
-    }
-  </style>
+    <link rel="stylesheet" href="assets/styles/demo.css" />
 </head>
 <body>
   <main class="app-shell">
-    <section class="mb-4">
-      <h1 class="h3 mb-1">Eventos</h1>
-      <p class="text-muted mb-0">Cliente demo en PHP + jQuery para consumir la API de eventos.</p>
+    <section class="hero-panel">
+      <span class="hero-kicker">Demo Comercial Lista para Cliente</span>
+      <h1 class="hero-title">Explorador Inteligente de Eventos</h1>
+      <p class="hero-subtitle">Interfaz rediseñada con enfoque visual SaaS para presentar listados, filtros y detalle de eventos con una experiencia moderna y profesional.</p>
+      <div class="hero-metrics">
+        <div class="metric-item">
+          <div class="metric-label">Stack</div>
+          <div class="metric-value">PHP + jQuery</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-label">Consumo</div>
+          <div class="metric-value">API REST en vivo</div>
+        </div>
+      </div>
     </section>
 
-    <section class="card card-soft mb-4">
+    <section class="card surface-card mb-4">
       <div class="card-body">
         <form id="filtersForm" class="row g-3 align-items-end">
           <div class="col-12 col-md-3">
@@ -76,25 +52,25 @@
             </select>
           </div>
           <div class="col-12 col-md-4 d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Filtrar</button>
-            <button type="button" id="resetFilters" class="btn btn-outline-secondary">Limpiar</button>
+            <button type="submit" class="btn btn-cta">Filtrar</button>
+            <button type="button" id="resetFilters" class="btn btn-ghost">Limpiar</button>
           </div>
         </form>
       </div>
     </section>
 
-    <section class="card card-soft">
+    <section class="card surface-card">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <span id="statusPill" class="status-pill">Listo</span>
-          <strong id="resultMeta" class="text-muted">Total: 0</strong>
+        <div class="results-header d-flex justify-content-between align-items-center">
+          <span id="statusPill" class="status-pill status-idle">Listo</span>
+          <strong id="resultMeta">Total: 0</strong>
         </div>
 
         <div id="alertBox" class="alert alert-danger d-none" role="alert"></div>
 
-        <div class="table-wrap border rounded">
+        <div class="table-wrap">
           <table class="table table-hover mb-0 align-middle">
-            <thead class="table-light sticky-top">
+            <thead class="sticky-top">
               <tr>
                 <th style="width: 90px;">ID</th>
                 <th>Titulo</th>
@@ -110,10 +86,10 @@
           </table>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mt-3">
-          <button id="prevPage" class="btn btn-outline-primary" type="button">Anterior</button>
-          <span id="pageInfo" class="text-muted">Pagina 1</span>
-          <button id="nextPage" class="btn btn-outline-primary" type="button">Siguiente</button>
+        <div class="pager-wrap d-flex justify-content-between align-items-center mt-3">
+          <button id="prevPage" class="btn btn-page" type="button">Anterior</button>
+          <span id="pageInfo">Pagina 1</span>
+          <button id="nextPage" class="btn btn-page" type="button">Siguiente</button>
         </div>
       </div>
     </section>
@@ -160,7 +136,8 @@
     crossorigin="anonymous"
   ></script>
   <script>
-    const API_BASE_URL = 'https://desafio-tecnico-full-stack.vercel.app';
+    const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const API_BASE_URL = isLocalHost ? 'http://127.0.0.1:8010' : 'https://desafio-tecnico-full-stack.vercel.app';
 
     const state = {
       page: 1,
@@ -182,12 +159,16 @@
     function setStatus(text, tone) {
       const statusPill = $('#statusPill');
       statusPill.text(text);
-      statusPill.removeClass('bg-danger-subtle text-danger bg-success-subtle text-success');
+      statusPill.removeClass('status-idle status-loading status-error status-success');
 
       if (tone === 'error') {
-        statusPill.addClass('bg-danger-subtle text-danger');
+        statusPill.addClass('status-error');
       } else if (tone === 'success') {
-        statusPill.addClass('bg-success-subtle text-success');
+        statusPill.addClass('status-success');
+      } else if (String(text).toLowerCase().includes('cargando') || String(text).toLowerCase().includes('consultando')) {
+        statusPill.addClass('status-loading');
+      } else {
+        statusPill.addClass('status-idle');
       }
     }
 
@@ -217,7 +198,7 @@
         tr.append($('<td></td>').text(formatDate(eventItem.date)));
 
         const actionTd = $('<td></td>');
-        const detailBtn = $('<button type="button" class="btn btn-sm btn-outline-primary">Ver detalle</button>');
+        const detailBtn = $('<button type="button" class="btn btn-sm btn-row-action">Ver detalle</button>');
         detailBtn.on('click', function (ev) {
           ev.stopPropagation();
           loadEventDetail(eventItem.id);
@@ -353,4 +334,5 @@
   </script>
 </body>
 </html>
+
 

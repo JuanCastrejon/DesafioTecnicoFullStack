@@ -33,7 +33,8 @@ def test_docs_should_return_custom_swagger_ui() -> None:
     response = client.get("/docs")
     assert response.status_code == 200
     assert "SwaggerUIBundle" in response.text
-    assert "theme-toggle" in response.text
+    assert "theme-toggle" not in response.text
+    assert "Filter by tag" not in response.text
 
 
 def test_list_events_should_return_paginated_results() -> None:

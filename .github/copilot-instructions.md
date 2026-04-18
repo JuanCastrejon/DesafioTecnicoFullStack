@@ -26,6 +26,13 @@
 - feature/*, fix/*, docs/* para trabajo diario.
 - Commits con Conventional Commits en español.
 
+## Operación con herramientas CLI
+
+- Usar GitHub CLI para revisar runs/checks antes de abrir o mergear PR.
+- Usar Supabase CLI para link, estado y migraciones de base de datos.
+- Usar Vercel CLI para validar despliegues preview/prod.
+- Priorizar trazabilidad en GitHub (runs, checks y PRs) sobre validación solo local.
+
 ## Higiene del repositorio
 
 - Nunca commitear secretos (`.env`, tokens, claves).

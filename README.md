@@ -73,6 +73,15 @@ Cumplido.
 - Indices orientados a consulta por fecha y orden compuesto
 - Fallback en memoria controlado por flag explicita (`ENABLE_IN_MEMORY_FALLBACK`)
 
+## Modos operativos Docker
+
+| Modo | DB requerida | Fallback | Bootstrap/Seed |
+|---|---:|---:|---:|
+| Dev Container | Opcional | Opcional por env | Desactivado por defecto |
+| Compose base (`docker-compose.yml`) | No | Activado por defecto | Desactivado |
+| Compose + local-db (`docker-compose.local-db.yml`) | Si | Desactivado | Activado |
+| CI | Si | Desactivado | Desactivado |
+
 ### Decisiones de demo vs produccion
 
 - Demo/local:
@@ -145,16 +154,29 @@ Notas:
 1. Copiar variables de entorno:
 - backend/.env.example -> backend/.env
 
-2. Levantar stack:
+2. Modo base (sin DB local, fallback en memoria):
 
 ```bash
 docker compose up --build
 ```
 
-Opcional con PostgreSQL local en contenedor:
+3. Modo con PostgreSQL local en contenedor:
 
 ```bash
-docker compose --profile local-db up --build
+docker compose -f docker-compose.yml -f docker-compose.local-db.yml up --build
+```
+
+4. Smoke test automatizado de Docker Compose:
+
+```powershell
+./scripts/smoke-docker-compose.ps1
+```
+
+Opciones:
+
+```powershell
+./scripts/smoke-docker-compose.ps1 -OnlyBase
+./scripts/smoke-docker-compose.ps1 -OnlyLocalDb
 ```
 
 Puertos en modo Docker Compose:

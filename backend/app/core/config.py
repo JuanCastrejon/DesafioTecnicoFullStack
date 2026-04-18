@@ -16,6 +16,9 @@ class Settings(BaseSettings):
         "postgresql+psycopg://postgres:postgres@localhost:5432/events_db"
     )
     enable_in_memory_fallback: bool = False
+    run_db_bootstrap: bool = False
+    seed_events: bool = False
+    seed_events_total: int = 10_000
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
@@ -23,6 +26,8 @@ class Settings(BaseSettings):
     def apply_runtime_defaults(self) -> "Settings":
         if getenv("VERCEL") == "1":
             self.app_env = getenv("VERCEL_ENV", "production")
+            self.run_db_bootstrap = False
+            self.seed_events = False
             if not getenv("DATABASE_URL"):
                 self.enable_in_memory_fallback = True
 

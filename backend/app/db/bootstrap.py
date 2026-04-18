@@ -35,6 +35,12 @@ def _build_seed_events(total: int = 10_000) -> list[dict[str, object]]:
 
 
 def init_events_storage() -> None:
+    if not settings.run_db_bootstrap:
+        logger.info(
+            "events storage bootstrap skipped because RUN_DB_BOOTSTRAP is disabled"
+        )
+        return
+
     if settings.enable_in_memory_fallback:
         try:
             ensure_database_ready()
@@ -49,10 +55,17 @@ def init_events_storage() -> None:
 
         with SessionLocal() as db:
             total = db.scalar(select(func.count(Event.id))) or 0
-            if total == 0:
-                db.bulk_insert_mappings(Event, _build_seed_events())
+            if total == 0 and settings.seed_events and settings.seed_events_total > 0:
+                db.bulk_insert_mappings(
+                    Event, _build_seed_events(total=settings.seed_events_total)
+                )
                 db.commit()
-                logger.info("events storage initialized", extra={"seed_total": 10_000})
+                logger.info(
+                    "events storage initialized",
+                    extra={"seed_total": settings.seed_events_total},
+                )
+            elif total == 0 and not settings.seed_events:
+                logger.info("events table created without seed data")
     except SQLAlchemyError:
         logger.exception(
             "events storage bootstrap failed",

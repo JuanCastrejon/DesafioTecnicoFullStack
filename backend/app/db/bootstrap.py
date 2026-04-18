@@ -34,6 +34,12 @@ def _build_seed_events(total: int = 10_000) -> list[dict[str, object]]:
 
 
 def init_events_storage() -> None:
+    if settings.enable_in_memory_fallback:
+        logger.warning(
+            "events storage bootstrap skipped because in-memory fallback is enabled"
+        )
+        return
+
     try:
         Base.metadata.create_all(bind=engine)
 

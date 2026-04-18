@@ -1,4 +1,7 @@
 from functools import lru_cache
+from os import getenv
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +15,15 @@ class Settings(BaseSettings):
     enable_in_memory_fallback: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+    @model_validator(mode="after")
+    def apply_runtime_defaults(self) -> "Settings":
+        if getenv("VERCEL") == "1":
+            self.app_env = getenv("VERCEL_ENV", "production")
+            if not getenv("DATABASE_URL"):
+                self.enable_in_memory_fallback = True
+
+        return self
 
 
 @lru_cache

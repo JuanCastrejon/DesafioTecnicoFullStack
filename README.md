@@ -204,6 +204,8 @@ supabase link --project-ref <project_ref>
 - APP_ENV=production
 - CORS_ORIGINS=<dominios frontend permitidos>
 
+Si Vercel no tiene `DATABASE_URL`, el backend entra en fallback en memoria para evitar que la función serverless se caiga al arrancar.
+
 3. Desplegar:
 
 ```bash

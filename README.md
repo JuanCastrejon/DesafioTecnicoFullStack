@@ -57,3 +57,58 @@ Variable opcional para apuntar a otra API:
 - docker build de imagen backend
 - commits limpios sin archivos temporales
 
+## CI/CD
+
+- Workflow en GitHub Actions: `.github/workflows/ci.yml`
+- En pull requests y push a ramas principales:
+	- Ejecuta pruebas backend
+- En push a `main`:
+	- Ejecuta build de imagen Docker
+
+## Deploy en Vercel + Supabase
+
+Prerrequisitos:
+
+- Vercel CLI autenticado (`vercel whoami`)
+- Supabase CLI autenticado (`supabase projects list`)
+
+1. Vincular proyecto local con Supabase (una sola vez):
+
+```bash
+supabase link --project-ref <project_ref>
+```
+
+2. Configurar variables en Vercel (Preview y Production):
+
+- `DATABASE_URL` (pooler Supabase puerto 6543 con `sslmode=require`)
+- `APP_ENV` (ej. `production`)
+- `CORS_ORIGINS` (dominio del cliente PHP o frontend)
+
+Ejemplo:
+
+```bash
+vercel env add DATABASE_URL production
+vercel env add APP_ENV production
+vercel env add CORS_ORIGINS production
+```
+
+3. Desplegar:
+
+```bash
+vercel
+vercel --prod
+```
+
+4. Verificar endpoints publicos:
+
+- `/health`
+- `/events?page=1&size=10`
+- `/events/5`
+- `/docs`
+
+Puedes usar el script:
+
+```powershell
+./scripts/smoke-api.ps1 -BaseUrl "https://tu-api.vercel.app"
+```
+

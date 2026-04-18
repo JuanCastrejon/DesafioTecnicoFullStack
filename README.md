@@ -18,6 +18,7 @@ Cumplido.
 - Escalabilidad base con paginacion y modelo de persistencia en PostgreSQL
 - Swagger disponible en /docs
 - Bonus implementado: cache dedicado en memoria (TTL + LRU) para respuestas frecuentes de listado y detalle
+- Fase 2 en curso: separacion adicional de responsabilidades en use-cases y repositorio, con pruebas de integracion sobre PostgreSQL
 
 ### Parte 2 - Arquitectura de apps moviles / enfoque tecnico (documental)
 
@@ -55,6 +56,8 @@ Cumplido.
 ## Estructura del proyecto
 
 - backend/: API FastAPI, dominio y pruebas
+- backend/app/use_cases/: orquestacion de casos de uso de eventos
+- backend/app/ports/: contratos internos para cache y repositorio
 - php-client/: interfaz PHP + jQuery
 - api/index.py: entrypoint serverless para Vercel
 - .github/workflows/ci.yml: pipeline CI

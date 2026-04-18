@@ -19,8 +19,8 @@ Cumplido.
 - Escalabilidad base con paginacion y modelo de persistencia en PostgreSQL
 - Swagger disponible en /docs
 - Bonus implementado: cache dedicado en memoria (TTL + LRU) para respuestas frecuentes de listado y detalle
-- Fase 2 completada: separacion adicional de responsabilidades en use-cases y repositorio, con pruebas de integracion sobre PostgreSQL
-- Fase 3 aplicada: readiness de base de datos, Docker multi-stage y health checks operativos
+- Separacion adicional de responsabilidades en use-cases y repositorio, con pruebas de integracion sobre PostgreSQL
+- Readiness de base de datos, Docker multi-stage y health checks operativos
 
 ### Parte 2 - Arquitectura de apps moviles / enfoque tecnico (documental)
 

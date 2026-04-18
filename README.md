@@ -65,7 +65,17 @@ Cumplido.
 - Fuente principal: PostgreSQL (Supabase o DB local)
 - Inicializacion automatica de tabla events con seed de 10.000 registros
 - Indices orientados a consulta por fecha y orden compuesto
-- Fallback en memoria si la DB no esta disponible (evita bloquear demo local)
+- Fallback en memoria controlado por flag explicita (`ENABLE_IN_MEMORY_FALLBACK`)
+
+### Decisiones de demo vs produccion
+
+- Demo/local:
+	- `ENABLE_IN_MEMORY_FALLBACK=true` permite operar sin bloquear demo cuando la DB no esta disponible.
+- Produccion/CI:
+	- `ENABLE_IN_MEMORY_FALLBACK=false` (valor recomendado) para no ocultar incidentes de infraestructura.
+	- Errores SQL se registran con logging estructurado y la API responde error uniforme.
+
+Esta separacion evita el fallback silencioso y deja explicito el trade-off operativo por entorno.
 
 ## Levantar localmente (modo validado)
 
@@ -152,7 +162,9 @@ Puertos en modo Docker Compose:
 - test-backend:
 	- Levanta PostgreSQL de pruebas en servicio
 	- Instala dependencias
-	- Ejecuta pytest
+	- Ejecuta lint con `ruff check`
+	- Ejecuta validacion de formato con `ruff format --check`
+	- Ejecuta pytest con coverage minimo (70%)
 - docker-build:
 	- Se ejecuta en push a main
 	- Construye imagen Docker del backend

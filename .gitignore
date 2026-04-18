@@ -48,3 +48,5 @@ docs/deuda-tecnica.md
 docs/decision-loggin.md
 docs/postman_collection.json
 scripts/demo-guion-video.md
+supabase/.temp/
+.supabase_db_password.local

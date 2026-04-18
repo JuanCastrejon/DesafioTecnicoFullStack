@@ -6,6 +6,15 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.services import events_service
 
 
+@pytest.fixture(autouse=True)
+def clear_events_cache() -> None:
+    events_service.LIST_EVENTS_CACHE.clear()
+    events_service.EVENT_DETAIL_CACHE.clear()
+    yield
+    events_service.LIST_EVENTS_CACHE.clear()
+    events_service.EVENT_DETAIL_CACHE.clear()
+
+
 def test_list_events_should_raise_when_db_fails_and_fallback_disabled(
     monkeypatch,
 ) -> None:
@@ -15,7 +24,7 @@ def test_list_events_should_raise_when_db_fails_and_fallback_disabled(
         raise SQLAlchemyError("db unavailable")
 
     monkeypatch.setattr(
-        events_service, "_list_events_paginated_from_db", raise_db_error
+        events_service.event_repository, "list_events_paginated", raise_db_error
     )
 
     with pytest.raises(SQLAlchemyError):
@@ -31,7 +40,7 @@ def test_list_events_should_use_fallback_when_enabled(monkeypatch) -> None:
         raise SQLAlchemyError("db unavailable")
 
     monkeypatch.setattr(
-        events_service, "_list_events_paginated_from_db", raise_db_error
+        events_service.event_repository, "list_events_paginated", raise_db_error
     )
 
     response = events_service.list_events_paginated(
@@ -53,7 +62,9 @@ def test_get_event_detail_should_raise_when_db_fails_and_fallback_disabled(
     def raise_db_error(*args, **kwargs):
         raise SQLAlchemyError("db unavailable")
 
-    monkeypatch.setattr(events_service, "_get_event_detail_from_db", raise_db_error)
+    monkeypatch.setattr(
+        events_service.event_repository, "get_event_by_id", raise_db_error
+    )
 
     with pytest.raises(SQLAlchemyError):
         events_service.get_event_detail_by_id(1)

@@ -12,14 +12,23 @@ def test_health_should_return_ok() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_list_events_should_return_empty_list() -> None:
+def test_list_events_should_return_paginated_results() -> None:
     response = client.get("/events?page=1&size=10")
     assert response.status_code == 200
     payload = response.json()
     assert payload["meta"]["page"] == 1
     assert payload["meta"]["size"] == 10
-    assert payload["meta"]["total"] == 120
+    assert payload["meta"]["total"] == 10000
     assert len(payload["data"]) == 10
+    assert payload["data"][0]["id"] == 10000
+
+
+def test_list_events_should_return_empty_page_when_offset_exceeds_total() -> None:
+    response = client.get("/events?page=1001&size=10")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["meta"]["total"] == 10000
+    assert payload["data"] == []
 
 
 def test_list_events_should_filter_by_date_range() -> None:
@@ -35,6 +44,11 @@ def test_list_events_should_return_400_for_invalid_range() -> None:
     assert response.status_code == 400
 
 
+def test_list_events_should_return_422_for_page_size_out_of_range() -> None:
+    response = client.get("/events?page=1&size=101")
+    assert response.status_code == 422
+
+
 def test_event_detail_should_return_event() -> None:
     response = client.get("/events/5")
     assert response.status_code == 200
@@ -45,8 +59,5 @@ def test_event_detail_should_return_event() -> None:
 
 
 def test_event_detail_not_found() -> None:
-    response = client.get("/events/1")
-    assert response.status_code == 200
-
-    response_not_found = client.get("/events/999")
+    response_not_found = client.get("/events/10001")
     assert response_not_found.status_code == 404

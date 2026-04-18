@@ -5,8 +5,15 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./backend/.env
+    environment:
+      PYTHONPATH: /app
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   db:
@@ -29,12 +36,15 @@ services:
 
   php-client:
     image: php:8.4-apache
+    environment:
+      API_BASE_URL: http://localhost:8000
     ports:
       - "8080:80"
     volumes:
       - ./php-client:/var/www/html
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

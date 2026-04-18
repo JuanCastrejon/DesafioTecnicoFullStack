@@ -40,6 +40,5 @@ Thumbs.db
 test-results/
 
 # Documentacion interna (uso personal)
-docs/ACCESOS_Y_CONEXIONES.md
-docs/CHECKLIST_PRE_REPOSITORIO_GITHUB.md
-docs/REPOSITORIO_y_ARCHIVOS_A_SUBIR.md
+supabase/.temp/
+.supabase_db_password.local

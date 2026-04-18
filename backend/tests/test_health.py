@@ -23,6 +23,19 @@ def test_health_should_return_ok() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_root_should_redirect_to_docs() -> None:
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "/docs"
+
+
+def test_docs_should_return_custom_swagger_ui() -> None:
+    response = client.get("/docs")
+    assert response.status_code == 200
+    assert "SwaggerUIBundle" in response.text
+    assert "theme-toggle" in response.text
+
+
 def test_list_events_should_return_paginated_results() -> None:
     response = client.get("/events?page=1&size=10")
     assert response.status_code == 200

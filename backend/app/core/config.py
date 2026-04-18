@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8089,http://127.0.0.1:8089,http://localhost:8090,http://127.0.0.1:8090"
+    cors_origin_regex: str = (
+        r"^https://php-client(?:-git-[a-z0-9-]+)?-[a-z0-9-]+\.vercel\.app$"
+    )
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/events_db"
     )

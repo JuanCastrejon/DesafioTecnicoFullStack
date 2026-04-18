@@ -16,6 +16,15 @@ Asegurar trazabilidad end-to-end de cada feature usando herramientas oficiales:
 
 No se abre ni se mergea PR hacia `develop` o `main` si hay checks fallidos en GitHub.
 
+## Regla obligatoria de encoding en PR
+
+- Nunca enviar descripciones de PR en multilinea usando `--body` inline desde PowerShell.
+- Siempre crear un archivo `.md` en UTF-8 y usar `gh pr create --body-file <archivo.md>`.
+- Para PRs ya creados con texto corrupto, corregir con `gh pr edit <pr_number> --body-file <archivo.md>`.
+- Validar despues de crear/editar:
+  - `gh pr view <pr_number> --json body -q ".body"`
+  - Confirmar que no existan literales `\\n` ni secuencias corruptas tipo `├` o `�`.
+
 ## Flujo obligatorio por feature
 
 1. Desarrollo local en `feature/*` con commits atómicos.
@@ -34,7 +43,9 @@ No se abre ni se mergea PR hacia `develop` o `main` si hay checks fallidos en Gi
 - Estado general de PR y ramas:
   - `gh pr status`
 - Crear PR:
-  - `gh pr create --base develop --head feature/<nombre> --title "feat(...): ..." --body "..." --draft`
+  - `gh pr create --base develop --head feature/<nombre> --title "feat(...): ..." --body-file <pr-body.md> --draft`
+- Corregir body de PR existente:
+  - `gh pr edit <pr_number> --body-file <pr-body.md>`
 - Pasar de draft a ready:
   - `gh pr ready <pr_number>`
 - Ver checks de un PR:

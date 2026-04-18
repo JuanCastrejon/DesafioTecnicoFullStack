@@ -3,6 +3,26 @@
   "version": 2,
   "routes": [
     {
+      "src": "/assets/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "php-client.*\\.vercel\\.app"
+        }
+      ],
+      "dest": "/php-client/assets/$1"
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "php-client.*\\.vercel\\.app"
+        }
+      ],
+      "dest": "/php-client/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "api/index.py"
     }

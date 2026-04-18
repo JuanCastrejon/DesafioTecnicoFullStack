@@ -45,6 +45,7 @@ Prueba tecnica full stack con:
 - Archivo principal: `php-client/index.php`
 - Tecnologias: PHP 8 + jQuery + Bootstrap
 - Funcionalidad: listado paginado, filtros por fecha, estados (loading/error/vacio) y modal de detalle
+- Demo web desplegada (Vercel estatico): https://php-client-chi.vercel.app
 
 Variable opcional para apuntar a otra API:
 

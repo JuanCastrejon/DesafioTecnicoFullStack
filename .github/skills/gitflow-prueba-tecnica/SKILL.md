@@ -37,3 +37,5 @@ Mantener orden, trazabilidad y calidad en commits y PRs.
 - [ ] `git diff --staged` revisado
 - [ ] Sin `.env`, `.vercel`, logs, caches
 - [ ] Pruebas mínimas ejecutadas
+- [ ] Archivos de uso interno o auditoria excluidos en `.gitignore`
+- [ ] Ningun archivo de planeacion privada o evidencia interna quedo en el commit

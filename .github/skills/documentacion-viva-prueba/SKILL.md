@@ -27,6 +27,13 @@ description: "Mantener README, docs y evidencias alineadas con el estado real de
 - [ ] Instrucciones de ejecución local validadas
 - [ ] Evidencia mínima de pruebas/CI
 
+## Regla de higiene documental
+
+- Si un archivo es solo para auditoria interna, plan personal o guion privado, no se commitea al remoto.
+- Antes de crear o conservar documentacion sin valor para el repo, agregar su ruta a `.gitignore`.
+- Mantener en el repositorio solo documentos que aporten valor a revisores, reclutadores o despliegue.
+- Si un documento no forma parte de la entrega publica, debe quedarse fuera del repo y del PR.
+
 ## Estándar pendiente: hardening de contrato API
 
 Aplicar cuando se cierre el MVP funcional de endpoints (sin adelantar alcance antes de tiempo):

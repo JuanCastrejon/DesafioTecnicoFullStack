@@ -1,4 +1,6 @@
-from app.schemas.event import EventDetail, EventListResponse, EventLocation, PaginationMeta
+from datetime import datetime, timezone
+
+from app.models.event import Event
 from app.services import events_service
 import pytest
 
@@ -15,14 +17,22 @@ def clear_events_cache() -> None:
 def test_list_events_should_use_cache_for_same_query(monkeypatch) -> None:
     calls = {"count": 0}
 
-    def fake_from_db(page: int, size: int, from_date, to_date) -> EventListResponse:
+    def fake_list_from_repository(page: int, size: int, from_date, to_date):
         calls["count"] += 1
-        return EventListResponse(data=[], meta=PaginationMeta(page=page, size=size, total=0))
+        return [], 0
 
-    monkeypatch.setattr(events_service, "_list_events_paginated_from_db", fake_from_db)
+    monkeypatch.setattr(
+        events_service.event_repository,
+        "list_events_paginated",
+        fake_list_from_repository,
+    )
 
-    first = events_service.list_events_paginated(page=1, size=10, from_date=None, to_date=None)
-    second = events_service.list_events_paginated(page=1, size=10, from_date=None, to_date=None)
+    first = events_service.list_events_paginated(
+        page=1, size=10, from_date=None, to_date=None
+    )
+    second = events_service.list_events_paginated(
+        page=1, size=10, from_date=None, to_date=None
+    )
 
     assert calls["count"] == 1
     assert first.meta.page == 1
@@ -32,17 +42,23 @@ def test_list_events_should_use_cache_for_same_query(monkeypatch) -> None:
 def test_event_detail_should_use_cache_for_same_id(monkeypatch) -> None:
     calls = {"count": 0}
 
-    def fake_detail_from_db(event_id: int) -> EventDetail:
+    def fake_detail_from_repository(event_id: int):
         calls["count"] += 1
-        return EventDetail(
+        return Event(
             id=event_id,
             title=f"Evento {event_id}",
             description=f"Detalle del Evento {event_id}",
-            date=events_service.SEED_EVENTS[0].date,
-            location=EventLocation(lat=4.7, lng=-74.0, address="Bogota"),
+            event_date=datetime(2025, 1, 2, tzinfo=timezone.utc),
+            lat=4.7,
+            lng=-74.0,
+            address="Bogota",
         )
 
-    monkeypatch.setattr(events_service, "_get_event_detail_from_db", fake_detail_from_db)
+    monkeypatch.setattr(
+        events_service.event_repository,
+        "get_event_by_id",
+        fake_detail_from_repository,
+    )
 
     first = events_service.get_event_detail_by_id(42)
     second = events_service.get_event_detail_by_id(42)

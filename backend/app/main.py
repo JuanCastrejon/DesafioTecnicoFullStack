@@ -5,7 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.events import router as events_router
 from app.core.config import get_settings
+from app.core.exceptions import http_exception_handler, unhandled_exception_handler, validation_exception_handler
 from app.core.logging import RequestIdMiddleware, configure_logging
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 settings = get_settings()
 configure_logging(settings.log_level)
@@ -16,6 +19,10 @@ app = FastAPI(
     description="Technical challenge API for events listing and detail.",
     version="0.1.0",
 )
+
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
 
 app.add_middleware(RequestIdMiddleware)
 

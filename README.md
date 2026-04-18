@@ -56,3 +56,4 @@ Variable opcional para apuntar a otra API:
 - pytest en backend
 - docker build de imagen backend
 - commits limpios sin archivos temporales
+

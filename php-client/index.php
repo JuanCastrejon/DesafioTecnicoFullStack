@@ -44,19 +44,89 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
       </div>
     </section>
 
-    <section class="card surface-card mb-4">
+    <section class="card surface-card filters-card mb-4">
       <div class="card-body">
-        <form id="filtersForm" class="row g-3 align-items-end">
-          <div class="col-12 col-md-3">
-            <label class="form-label" for="fromDate">Desde</label>
-            <input id="fromDate" class="form-control" type="date" />
+        <form id="filtersForm" class="filters-form">
+          <div class="filter-group">
+            <label class="form-label" for="fromDateDisplay">Desde</label>
+            <div class="datepicker-wrapper" data-datepicker="from">
+              <input type="hidden" id="fromDate" name="fromDate" />
+              <button type="button" class="datepicker-trigger" id="fromDateDisplay">
+                <svg class="datepicker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span class="datepicker-text">Seleccionar fecha</span>
+              </button>
+              <div class="datepicker-dropdown">
+                <div class="datepicker-header">
+                  <button type="button" class="datepicker-nav datepicker-prev" aria-label="Mes anterior">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                  </button>
+                  <span class="datepicker-month-year"></span>
+                  <button type="button" class="datepicker-nav datepicker-next" aria-label="Mes siguiente">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                  </button>
+                </div>
+                <div class="datepicker-weekdays">
+                  <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sa</span>
+                </div>
+                <div class="datepicker-days"></div>
+                <div class="datepicker-footer">
+                  <button type="button" class="datepicker-clear">Limpiar</button>
+                  <button type="button" class="datepicker-today">Hoy</button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="col-12 col-md-3">
-            <label class="form-label" for="toDate">Hasta</label>
-            <input id="toDate" class="form-control" type="date" />
+
+          <div class="filter-group">
+            <label class="form-label" for="toDateDisplay">Hasta</label>
+            <div class="datepicker-wrapper" data-datepicker="to">
+              <input type="hidden" id="toDate" name="toDate" />
+              <button type="button" class="datepicker-trigger" id="toDateDisplay">
+                <svg class="datepicker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span class="datepicker-text">Seleccionar fecha</span>
+              </button>
+              <div class="datepicker-dropdown">
+                <div class="datepicker-header">
+                  <button type="button" class="datepicker-nav datepicker-prev" aria-label="Mes anterior">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                  </button>
+                  <span class="datepicker-month-year"></span>
+                  <button type="button" class="datepicker-nav datepicker-next" aria-label="Mes siguiente">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                  </button>
+                </div>
+                <div class="datepicker-weekdays">
+                  <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sa</span>
+                </div>
+                <div class="datepicker-days"></div>
+                <div class="datepicker-footer">
+                  <button type="button" class="datepicker-clear">Limpiar</button>
+                  <button type="button" class="datepicker-today">Hoy</button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="col-12 col-md-2">
-            <label class="form-label" for="pageSize">Tamano</label>
+
+          <div class="filter-group filter-group-size">
+            <label class="form-label" for="pageSize">Tamaño</label>
             <select id="pageSize" class="form-select">
               <option value="10" selected>10</option>
               <option value="25">25</option>
@@ -64,9 +134,22 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
               <option value="100">100</option>
             </select>
           </div>
-          <div class="col-12 col-md-4 d-flex gap-2">
-            <button type="submit" class="btn btn-cta">Filtrar</button>
-            <button type="button" id="resetFilters" class="btn btn-ghost">Limpiar</button>
+
+          <div class="filter-group filter-group-actions">
+            <button type="submit" class="btn btn-cta">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              Filtrar
+            </button>
+            <button type="button" id="resetFilters" class="btn btn-ghost">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <path d="M3 3v5h5"></path>
+              </svg>
+              Limpiar
+            </button>
           </div>
         </form>
       </div>
@@ -158,6 +241,213 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
       from: '',
       to: ''
     };
+
+    // ========== Modern Datepicker ==========
+    const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+    class DatePicker {
+      constructor(wrapper) {
+        this.wrapper = wrapper;
+        this.type = wrapper.dataset.datepicker;
+        this.hiddenInput = wrapper.querySelector('input[type="hidden"]');
+        this.trigger = wrapper.querySelector('.datepicker-trigger');
+        this.dropdown = wrapper.querySelector('.datepicker-dropdown');
+        this.monthYearLabel = wrapper.querySelector('.datepicker-month-year');
+        this.daysContainer = wrapper.querySelector('.datepicker-days');
+        this.prevBtn = wrapper.querySelector('.datepicker-prev');
+        this.nextBtn = wrapper.querySelector('.datepicker-next');
+        this.clearBtn = wrapper.querySelector('.datepicker-clear');
+        this.todayBtn = wrapper.querySelector('.datepicker-today');
+        this.textSpan = wrapper.querySelector('.datepicker-text');
+
+        this.currentDate = new Date();
+        this.selectedDate = null;
+        this.viewYear = this.currentDate.getFullYear();
+        this.viewMonth = this.currentDate.getMonth();
+
+        this.init();
+      }
+
+      init() {
+        this.trigger.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.toggle();
+        });
+
+        this.prevBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.prevMonth();
+        });
+
+        this.nextBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.nextMonth();
+        });
+
+        this.clearBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.clear();
+        });
+
+        this.todayBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.selectToday();
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!this.wrapper.contains(e.target)) {
+            this.close();
+          }
+        });
+
+        this.render();
+      }
+
+      toggle() {
+        if (this.wrapper.classList.contains('open')) {
+          this.close();
+        } else {
+          this.open();
+        }
+      }
+
+      open() {
+        document.querySelectorAll('.datepicker-wrapper.open').forEach(w => {
+          if (w !== this.wrapper) w.classList.remove('open');
+        });
+        this.wrapper.classList.add('open');
+        if (this.selectedDate) {
+          this.viewYear = this.selectedDate.getFullYear();
+          this.viewMonth = this.selectedDate.getMonth();
+        }
+        this.render();
+      }
+
+      close() {
+        this.wrapper.classList.remove('open');
+      }
+
+      prevMonth() {
+        this.viewMonth--;
+        if (this.viewMonth < 0) {
+          this.viewMonth = 11;
+          this.viewYear--;
+        }
+        this.render();
+      }
+
+      nextMonth() {
+        this.viewMonth++;
+        if (this.viewMonth > 11) {
+          this.viewMonth = 0;
+          this.viewYear++;
+        }
+        this.render();
+      }
+
+      selectDate(year, month, day) {
+        this.selectedDate = new Date(year, month, day);
+        const iso = this.formatISO(this.selectedDate);
+        this.hiddenInput.value = iso;
+        this.textSpan.textContent = this.formatDisplay(this.selectedDate);
+        this.trigger.classList.add('has-value');
+        this.close();
+        this.render();
+      }
+
+      clear() {
+        this.selectedDate = null;
+        this.hiddenInput.value = '';
+        this.textSpan.textContent = 'Seleccionar fecha';
+        this.trigger.classList.remove('has-value');
+        this.viewYear = this.currentDate.getFullYear();
+        this.viewMonth = this.currentDate.getMonth();
+        this.render();
+      }
+
+      selectToday() {
+        const today = new Date();
+        this.selectDate(today.getFullYear(), today.getMonth(), today.getDate());
+      }
+
+      formatISO(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      formatDisplay(date) {
+        const d = date.getDate();
+        const m = MONTHS_ES[date.getMonth()].substring(0, 3);
+        const y = date.getFullYear();
+        return `${d} ${m} ${y}`;
+      }
+
+      render() {
+        this.monthYearLabel.textContent = `${MONTHS_ES[this.viewMonth]} ${this.viewYear}`;
+        
+        const firstDay = new Date(this.viewYear, this.viewMonth, 1);
+        const lastDay = new Date(this.viewYear, this.viewMonth + 1, 0);
+        const startDayOfWeek = firstDay.getDay();
+        const daysInMonth = lastDay.getDate();
+
+        const prevMonthLastDay = new Date(this.viewYear, this.viewMonth, 0).getDate();
+
+        let html = '';
+
+        for (let i = startDayOfWeek - 1; i >= 0; i--) {
+          const day = prevMonthLastDay - i;
+          const prevMonth = this.viewMonth === 0 ? 11 : this.viewMonth - 1;
+          const prevYear = this.viewMonth === 0 ? this.viewYear - 1 : this.viewYear;
+          html += `<button type="button" class="datepicker-day other-month" data-year="${prevYear}" data-month="${prevMonth}" data-day="${day}">${day}</button>`;
+        }
+
+        const today = new Date();
+        for (let day = 1; day <= daysInMonth; day++) {
+          let classes = 'datepicker-day';
+          
+          if (today.getFullYear() === this.viewYear && 
+              today.getMonth() === this.viewMonth && 
+              today.getDate() === day) {
+            classes += ' today';
+          }
+
+          if (this.selectedDate &&
+              this.selectedDate.getFullYear() === this.viewYear &&
+              this.selectedDate.getMonth() === this.viewMonth &&
+              this.selectedDate.getDate() === day) {
+            classes += ' selected';
+          }
+
+          html += `<button type="button" class="${classes}" data-year="${this.viewYear}" data-month="${this.viewMonth}" data-day="${day}">${day}</button>`;
+        }
+
+        const totalCells = startDayOfWeek + daysInMonth;
+        const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+        const nextMonth = this.viewMonth === 11 ? 0 : this.viewMonth + 1;
+        const nextYear = this.viewMonth === 11 ? this.viewYear + 1 : this.viewYear;
+        
+        for (let day = 1; day <= remaining; day++) {
+          html += `<button type="button" class="datepicker-day other-month" data-year="${nextYear}" data-month="${nextMonth}" data-day="${day}">${day}</button>`;
+        }
+
+        this.daysContainer.innerHTML = html;
+
+        this.daysContainer.querySelectorAll('.datepicker-day').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const year = parseInt(btn.dataset.year);
+            const month = parseInt(btn.dataset.month);
+            const day = parseInt(btn.dataset.day);
+            this.selectDate(year, month, day);
+          });
+        });
+      }
+    }
+
+    const datepickers = {};
 
     const detailModal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
 
@@ -306,6 +596,12 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
     }
 
     $(function () {
+      // Initialize datepickers
+      document.querySelectorAll('.datepicker-wrapper').forEach(wrapper => {
+        const type = wrapper.dataset.datepicker;
+        datepickers[type] = new DatePicker(wrapper);
+      });
+
       $('#filtersForm').on('submit', function (event) {
         event.preventDefault();
         state.from = String($('#fromDate').val() || '');
@@ -316,8 +612,8 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
       });
 
       $('#resetFilters').on('click', function () {
-        $('#fromDate').val('');
-        $('#toDate').val('');
+        // Clear datepickers
+        Object.values(datepickers).forEach(dp => dp.clear());
         $('#pageSize').val('10');
         state.from = '';
         state.to = '';

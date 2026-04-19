@@ -129,6 +129,22 @@ def test_list_events_should_return_422_for_page_size_out_of_range() -> None:
     assert isinstance(payload["details"], list)
 
 
+def test_events_openapi_should_document_date_filter_format() -> None:
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+
+    paths = response.json()["paths"]
+    list_events_params = paths["/events"]["get"]["parameters"]
+
+    from_param = next(param for param in list_events_params if param["name"] == "from")
+    to_param = next(param for param in list_events_params if param["name"] == "to")
+
+    assert "YYYY-MM-DD" in from_param["description"]
+    assert "YYYY-MM-DD" in to_param["description"]
+    assert "2025-08-01" in str(from_param)
+    assert "2025-08-31" in str(to_param)
+
+
 def test_event_detail_should_return_event() -> None:
     response = client.get("/events/5")
     assert response.status_code == 200

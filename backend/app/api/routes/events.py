@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 @router.get(
     "",
     response_model=EventListResponse,
+    summary="List Events",
+    description=(
+        "Retorna eventos paginados. Usa `page` y `size` para la paginación, "
+        "y `from` / `to` para filtrar por rango de fechas en formato YYYY-MM-DD."
+    ),
     responses={
         400: {"model": ErrorResponse, "description": "Bad request"},
         422: {"model": ErrorResponse, "description": "Validation error"},
@@ -22,10 +27,31 @@ logger = logging.getLogger(__name__)
     },
 )
 def list_events(
-    page: int = Query(1, ge=1),
-    size: int = Query(10, ge=1, le=100),
-    from_date: date | None = Query(None, alias="from"),
-    to_date: date | None = Query(None, alias="to"),
+    page: int = Query(
+        1,
+        ge=1,
+        description="Número de página a consultar, empezando en 1.",
+        examples={"default": {"summary": "Primera página", "value": 1}},
+    ),
+    size: int = Query(
+        10,
+        ge=1,
+        le=100,
+        description="Cantidad de eventos por página. Máximo 100.",
+        examples={"default": {"summary": "10 elementos por página", "value": 10}},
+    ),
+    from_date: date | None = Query(
+        None,
+        alias="from",
+        description="Fecha inicial del rango en formato YYYY-MM-DD. No incluir hora.",
+        examples={"default": {"summary": "Desde", "value": "2025-08-01"}},
+    ),
+    to_date: date | None = Query(
+        None,
+        alias="to",
+        description="Fecha final del rango en formato YYYY-MM-DD. No incluir hora.",
+        examples={"default": {"summary": "Hasta", "value": "2025-08-31"}},
+    ),
 ) -> EventListResponse:
     if from_date and to_date and from_date > to_date:
         raise HTTPException(status_code=400, detail="from must be lower or equal to to")

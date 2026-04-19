@@ -29,9 +29,9 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
 <body>
   <main class="app-shell">
     <section class="hero-panel">
-      <span class="hero-kicker">Demostracion funcional</span>
+      <span class="hero-kicker">Demostracion Funcional</span>
       <h1 class="hero-title">Consulta de Eventos</h1>
-      <p class="hero-subtitle">Listado paginado con filtros por fecha y visualizacion de detalle en tiempo real.</p>
+      <p class="hero-subtitle">Arranca con las ultimas 24 horas, muestra el rango activo y permite expandir facilmente el filtro por fecha.</p>
       <div class="hero-metrics">
         <div class="metric-item">
           <div class="metric-label">Stack</div>
@@ -44,31 +44,81 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
       </div>
     </section>
 
-    <section class="card surface-card mb-4">
+    <section class="card surface-card range-card mb-4">
       <div class="card-body">
-        <form id="filtersForm" class="row g-3 align-items-end">
-          <div class="col-12 col-md-3">
-            <label class="form-label" for="fromDate">Desde</label>
-            <input id="fromDate" class="form-control" type="date" />
+        <div class="range-toolbar">
+          <div class="range-toolbar-dates">
+            <div class="range-toolbar-field">
+              <span class="range-toolbar-label">Desde</span>
+              <div class="dp-trigger-field">
+                <input
+                  type="text"
+                  class="dp-trigger"
+                  id="trig-start"
+                  placeholder="dd/mm/aaaa"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  aria-label="Fecha desde"
+                />
+                <button type="button" class="dp-trigger-toggle" data-open-mode="start" aria-label="Abrir calendario desde">▾</button>
+              </div>
+            </div>
+            <div class="range-toolbar-field">
+              <span class="range-toolbar-label">Hasta</span>
+              <div class="dp-trigger-field">
+                <input
+                  type="text"
+                  class="dp-trigger"
+                  id="trig-end"
+                  placeholder="dd/mm/aaaa"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  aria-label="Fecha hasta"
+                />
+                <button type="button" class="dp-trigger-toggle" data-open-mode="end" aria-label="Abrir calendario hasta">▾</button>
+              </div>
+            </div>
           </div>
-          <div class="col-12 col-md-3">
-            <label class="form-label" for="toDate">Hasta</label>
-            <input id="toDate" class="form-control" type="date" />
+
+          <div class="range-toolbar-actions">
+            <div class="range-toolbar-size">
+              <label class="results-size-label" for="pageSize">Tamaño de paginación:</label>
+              <select id="pageSize" class="form-select form-select-sm">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <button type="button" id="applyFiltersBtn" class="btn btn-cta">Buscar</button>
           </div>
-          <div class="col-12 col-md-2">
-            <label class="form-label" for="pageSize">Tamano</label>
-            <select id="pageSize" class="form-select">
-              <option value="10" selected>10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
+        </div>
+
+        <div id="rangePanel" class="range-panel">
+          <div class="range-presets" role="tablist" aria-label="Presets de rango">
+            <button type="button" class="range-preset active" data-range="24h">Ultimas 24h</button>
+            <button type="button" class="range-preset" data-range="7d">7 dias</button>
+            <button type="button" class="range-preset" data-range="30d">30 dias</button>
+            <button type="button" class="range-preset" data-range="custom">Personalizado</button>
           </div>
-          <div class="col-12 col-md-4 d-flex gap-2">
-            <button type="submit" class="btn btn-cta">Filtrar</button>
-            <button type="button" id="resetFilters" class="btn btn-ghost">Limpiar</button>
+
+          <div class="dp-picker-card">
+            <div class="dp-cal-panel" id="cal-panel">
+              <div class="dp-mode-bar">
+                <span class="dp-mode-pill" id="pill-start">◈ Seleccionando Desde</span>
+                <span class="dp-mode-pill" id="pill-end">◈ Seleccionando Hasta</span>
+              </div>
+
+              <div class="dp-months-grid">
+                <div id="month-left"></div>
+                <div id="month-right"></div>
+                <div class="dp-actions">
+                  <button type="button" class="dp-btn-clear" id="clearRangeBtn">Limpiar</button>
+                </div>
+              </div>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </section>
 
@@ -76,7 +126,7 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
       <div class="card-body">
         <div class="results-header d-flex justify-content-between align-items-center">
           <span id="statusPill" class="status-pill status-idle">Listo</span>
-          <strong id="resultMeta">Total: 0</strong>
+          <strong id="resultMeta">Mostrando 0 / 0</strong>
         </div>
 
         <div id="alertBox" class="alert alert-danger d-none" role="alert"></div>
@@ -155,11 +205,555 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
       page: 1,
       size: 10,
       total: 0,
+      currentCount: 0,
+      allEvents: [],
       from: '',
-      to: ''
+      to: '',
+      preset: '24h'
     };
 
+    const pickerState = {
+      today: null,
+      leftYear: 0,
+      leftMonth: 0,
+      rightYear: 0,
+      rightMonth: 0,
+      startDate: null,
+      endDate: null,
+      hoverDate: null,
+      mode: null
+    };
+
+    const DP_MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const DP_DAYS_SHORT = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
+
     const detailModal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
+
+    function toDateInputValue(date) {
+      const localDate = new Date(date);
+      localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
+      return localDate.toISOString().slice(0, 10);
+    }
+
+    function fromDateInputValue(value) {
+      if (!value) {
+        return null;
+      }
+
+      const parts = value.split('-').map(Number);
+      if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
+        return null;
+      }
+
+      const date = new Date(parts[0], parts[1] - 1, parts[2]);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+
+    function formatSummaryDate(value) {
+      const date = fromDateInputValue(value);
+      if (!date) {
+        return '-';
+      }
+
+      return new Intl.DateTimeFormat('es-CO', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      }).format(date);
+    }
+
+    function buildPresetRange(preset) {
+      const endDate = new Date();
+      endDate.setHours(0, 0, 0, 0);
+
+      const startDate = new Date(endDate);
+      let label = 'Rango personalizado';
+
+      if (preset === '24h') {
+        startDate.setDate(endDate.getDate() - 1);
+        label = 'Ultimas 24h';
+      } else if (preset === '7d') {
+        startDate.setDate(endDate.getDate() - 6);
+        label = 'Ultimos 7 dias';
+      } else if (preset === '30d') {
+        startDate.setDate(endDate.getDate() - 29);
+        label = 'Ultimos 30 dias';
+      }
+
+      return {
+        from: toDateInputValue(startDate),
+        to: toDateInputValue(endDate),
+        label
+      };
+    }
+
+    function ymdToDate(value) {
+      if (!value) {
+        return null;
+      }
+
+      const parts = value.split('-').map(Number);
+      if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
+        return null;
+      }
+
+      const date = new Date(parts[0], parts[1] - 1, parts[2]);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+
+    function dpFormatLabel(date) {
+      if (!date) {
+        return '';
+      }
+
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      return `${dd}/${mm}/${date.getFullYear()}`;
+    }
+
+    function dpUpdateTriggerLabels() {
+      $('#trig-start').val(pickerState.startDate ? dpFormatLabel(pickerState.startDate) : '');
+      $('#trig-end').val(pickerState.endDate ? dpFormatLabel(pickerState.endDate) : '');
+      $('#trig-start').toggleClass('filled', Boolean(pickerState.startDate));
+      $('#trig-end').toggleClass('filled', Boolean(pickerState.endDate));
+    }
+
+    function extractDateDigits(value) {
+      return String(value || '').replace(/\D/g, '');
+    }
+
+    function formatDateDigits(digits) {
+      const normalized = String(digits || '').slice(0, 8);
+      if (!normalized) {
+        return '';
+      }
+
+      if (normalized.length <= 2) {
+        return normalized;
+      }
+
+      if (normalized.length <= 4) {
+        return `${normalized.slice(0, 2)}/${normalized.slice(2)}`;
+      }
+
+      return `${normalized.slice(0, 2)}/${normalized.slice(2, 4)}/${normalized.slice(4)}`;
+    }
+
+    function applyDateInputMask(inputElement) {
+      const rawDigits = extractDateDigits($(inputElement).val());
+      const maskedValue = formatDateDigits(rawDigits);
+      $(inputElement).val(maskedValue);
+    }
+
+    function parseManualDateValue(value) {
+      const digits = extractDateDigits(value);
+      if (!digits) {
+        return null;
+      }
+
+      if (digits.length !== 8) {
+        return undefined;
+      }
+
+      const day = Number(digits.slice(0, 2));
+      const month = Number(digits.slice(2, 4));
+      const year = Number(digits.slice(4, 8));
+      if (!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)) {
+        return undefined;
+      }
+
+      const date = new Date(year, month - 1, day);
+      date.setHours(0, 0, 0, 0);
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        return undefined;
+      }
+
+      return date;
+    }
+
+    function syncPickerFromManualInputs(showErrors = true) {
+      const startRaw = String($('#trig-start').val() || '').trim();
+      const endRaw = String($('#trig-end').val() || '').trim();
+
+      const parsedStart = parseManualDateValue(startRaw);
+      if (parsedStart === undefined) {
+        if (showErrors) {
+          setStatus('Fecha invalida', 'error');
+          setAlert('La fecha Desde debe tener 8 digitos en formato ddmmaaaa (ejemplo: 02022025).');
+        }
+        return false;
+      }
+
+      const parsedEnd = parseManualDateValue(endRaw);
+      if (parsedEnd === undefined) {
+        if (showErrors) {
+          setStatus('Fecha invalida', 'error');
+          setAlert('La fecha Hasta debe tener 8 digitos en formato ddmmaaaa (ejemplo: 02022025).');
+        }
+        return false;
+      }
+
+      if (parsedStart && parsedEnd && parsedEnd < parsedStart) {
+        if (showErrors) {
+          setStatus('Rango invalido', 'error');
+          setAlert('La fecha hasta no puede ser menor que la fecha desde.');
+        }
+        return false;
+      }
+
+      pickerState.startDate = parsedStart;
+      pickerState.endDate = parsedEnd;
+      pickerState.hoverDate = null;
+
+      if (parsedStart || parsedEnd) {
+        state.preset = 'custom';
+        syncPresetButtons();
+      }
+
+      if (parsedStart && parsedEnd) {
+        state.from = toDateInputValue(parsedStart);
+        state.to = toDateInputValue(parsedEnd);
+      } else if (!parsedStart && !parsedEnd) {
+        state.from = '';
+        state.to = '';
+      }
+
+      dpUpdateTriggerLabels();
+      dpUpdateModeView();
+      dpRenderCalendar();
+      setAlert('');
+      return true;
+    }
+
+    function dpUpdateRightMonth() {
+      pickerState.rightMonth = pickerState.leftMonth + 1;
+      pickerState.rightYear = pickerState.leftYear;
+      if (pickerState.rightMonth > 11) {
+        pickerState.rightMonth = 0;
+        pickerState.rightYear += 1;
+      }
+    }
+
+    function dpUpdateModeView() {
+      $('#pill-start').toggleClass('active', pickerState.mode === 'start');
+      $('#pill-end').toggleClass('active', pickerState.mode === 'end');
+      $('#trig-start').toggleClass('active', pickerState.mode === 'start');
+      $('#trig-end').toggleClass('active', pickerState.mode === 'end');
+      dpSyncToggleState();
+    }
+
+    function dpSyncToggleState() {
+      const isOpen = $('.dp-picker-card').hasClass('open');
+
+      $('.dp-trigger-field').removeClass('calendar-open');
+      $('.dp-trigger-toggle').attr('aria-expanded', 'false').attr('title', 'Abrir calendario');
+
+      if (!isOpen || !pickerState.mode) {
+        return;
+      }
+
+      const selector = pickerState.mode === 'end'
+        ? '.dp-trigger-toggle[data-open-mode="end"]'
+        : '.dp-trigger-toggle[data-open-mode="start"]';
+
+      const activeToggle = $(selector);
+      activeToggle.attr('aria-expanded', 'true').attr('title', 'Cerrar calendario');
+      activeToggle.closest('.dp-trigger-field').addClass('calendar-open');
+    }
+
+    function dpCanGoPrev() {
+      if (pickerState.mode !== 'end' || !pickerState.startDate) {
+        return true;
+      }
+
+      const anchor = pickerState.startDate;
+
+      if (!anchor) {
+        return true;
+      }
+
+      const currentLeftMonthTs = new Date(pickerState.leftYear, pickerState.leftMonth, 1).getTime();
+      const minMonthTs = new Date(anchor.getFullYear(), anchor.getMonth(), 1).getTime();
+      return currentLeftMonthTs > minMonthTs;
+    }
+
+    function dpRenderMonth(containerId, year, month, isLeft) {
+      const container = document.getElementById(containerId);
+      if (!container) {
+        return;
+      }
+
+      const canGoPrev = dpCanGoPrev();
+
+      let html = '<div class="dp-month-nav">';
+      if (isLeft) {
+        html += `<button type="button" class="dp-nav-btn${canGoPrev ? '' : ' disabled'}" data-nav="prev" ${canGoPrev ? '' : 'disabled'}>&#8249;</button>`;
+      } else {
+        html += '<div class="dp-nav-placeholder"></div>';
+      }
+
+      html += `<span class="dp-month-title">${DP_MONTHS[month]} ${year}</span>`;
+
+      if (!isLeft) {
+        html += '<button type="button" class="dp-nav-btn" data-nav="next">&#8250;</button>';
+      } else {
+        html += '<div class="dp-nav-placeholder"></div>';
+      }
+
+      html += '</div><div class="dp-days-grid">';
+      DP_DAYS_SHORT.forEach((day) => {
+        html += `<div class="dp-day-label">${day}</div>`;
+      });
+
+      const firstOfMonth = new Date(year, month, 1);
+      let dow = firstOfMonth.getDay();
+      dow = dow === 0 ? 6 : dow - 1;
+
+      for (let i = 0; i < dow; i += 1) {
+        html += '<div class="dp-day empty"></div>';
+      }
+
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const startTs = pickerState.startDate ? pickerState.startDate.getTime() : null;
+      const endTs = pickerState.endDate ? pickerState.endDate.getTime() : null;
+      const hoverTs = pickerState.hoverDate ? pickerState.hoverDate.getTime() : null;
+      const effectiveEndTs = pickerState.mode === 'end' && !pickerState.endDate && hoverTs && startTs ? hoverTs : endTs;
+      const minTs = startTs && effectiveEndTs ? Math.min(startTs, effectiveEndTs) : null;
+      const maxTs = startTs && effectiveEndTs ? Math.max(startTs, effectiveEndTs) : null;
+      const minSelectableTs = pickerState.mode === 'end' && startTs ? startTs : null;
+
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const date = new Date(year, month, day);
+        date.setHours(0, 0, 0, 0);
+        const ts = date.getTime();
+        const disabled = Boolean(minSelectableTs && ts < minSelectableTs);
+
+        const classNames = ['dp-day'];
+        if (disabled) {
+          classNames.push('disabled');
+        }
+
+        if (startTs && ts === startTs) {
+          classNames.push('start');
+        }
+
+        if (effectiveEndTs && ts === effectiveEndTs && ts !== startTs) {
+          classNames.push('end');
+        }
+
+        if (startTs && effectiveEndTs && ts > minTs && ts < maxTs) {
+          classNames.push('in-range');
+        }
+
+        if (startTs && effectiveEndTs && ts === startTs && ts === effectiveEndTs) {
+          classNames.push('solo');
+        }
+
+        if (pickerState.today && ts === pickerState.today.getTime()) {
+          classNames.push('today');
+        }
+
+        const canPick = !disabled;
+        const attrs = canPick
+          ? ` data-date="${toDateInputValue(date)}"`
+          : '';
+
+        html += `<button type="button" class="${classNames.join(' ')}"${attrs}>${day}</button>`;
+      }
+
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function dpRenderCalendar() {
+      dpRenderMonth('month-left', pickerState.leftYear, pickerState.leftMonth, true);
+      dpRenderMonth('month-right', pickerState.rightYear, pickerState.rightMonth, false);
+    }
+
+    function dpSetCalendarOpen(isOpen) {
+      $('#cal-panel').toggleClass('open', isOpen);
+      $('.dp-picker-card').toggleClass('open', isOpen);
+      if (!isOpen) {
+        pickerState.mode = null;
+        pickerState.hoverDate = null;
+      }
+      dpUpdateModeView();
+    }
+
+    function dpToggleFor(mode) {
+      const normalizedMode = mode === 'end' ? 'end' : 'start';
+      const effectiveMode = normalizedMode === 'end' && !pickerState.startDate ? 'start' : normalizedMode;
+      const isOpen = $('.dp-picker-card').hasClass('open');
+
+      if (isOpen && pickerState.mode === effectiveMode) {
+        dpSetCalendarOpen(false);
+        return;
+      }
+
+      dpOpenFor(effectiveMode);
+    }
+
+    function dpOpenFor(mode) {
+      pickerState.mode = mode;
+      pickerState.hoverDate = null;
+      const anchorDate = mode === 'end'
+        ? (pickerState.endDate || pickerState.startDate || pickerState.today)
+        : (pickerState.startDate || pickerState.today);
+      pickerState.leftYear = anchorDate.getFullYear();
+      pickerState.leftMonth = anchorDate.getMonth();
+      dpUpdateRightMonth();
+      dpSetCalendarOpen(true);
+      setRangePanelOpen(true);
+      dpUpdateModeView();
+      dpRenderCalendar();
+    }
+
+    function dpPrevMonth() {
+      if (!dpCanGoPrev()) {
+        return;
+      }
+
+      pickerState.leftMonth -= 1;
+      if (pickerState.leftMonth < 0) {
+        pickerState.leftMonth = 11;
+        pickerState.leftYear -= 1;
+      }
+      dpUpdateRightMonth();
+      dpRenderCalendar();
+    }
+
+    function dpNextMonth() {
+      pickerState.leftMonth += 1;
+      if (pickerState.leftMonth > 11) {
+        pickerState.leftMonth = 0;
+        pickerState.leftYear += 1;
+      }
+      dpUpdateRightMonth();
+      dpRenderCalendar();
+    }
+
+    function dpPickDate(date) {
+      if (pickerState.mode === 'start') {
+        pickerState.startDate = date;
+        pickerState.endDate = null;
+        state.preset = 'custom';
+        syncPresetButtons();
+        setStatus('Selecciona fecha de vuelta', '');
+        setAlert('');
+        dpUpdateTriggerLabels();
+        dpOpenFor('end');
+        return;
+      } else {
+        if (pickerState.startDate && date < pickerState.startDate) {
+          return;
+        }
+        pickerState.endDate = date;
+        applyCustomRangeSelection();
+        return;
+      }
+
+      pickerState.hoverDate = null;
+      dpUpdateTriggerLabels();
+      dpUpdateModeView();
+      dpRenderCalendar();
+    }
+
+    function dpClearSelection() {
+      pickerState.startDate = null;
+      pickerState.endDate = null;
+      pickerState.hoverDate = null;
+      pickerState.mode = 'start';
+      dpUpdateTriggerLabels();
+      dpUpdateModeView();
+      dpRenderCalendar();
+    }
+
+    function applyCustomRangeSelection() {
+      if (!pickerState.startDate || !pickerState.endDate) {
+        return;
+      }
+
+      if (pickerState.endDate < pickerState.startDate) {
+        setStatus('Rango invalido', 'error');
+        setAlert('La fecha hasta no puede ser menor que la fecha desde.');
+        return;
+      }
+
+      state.from = toDateInputValue(pickerState.startDate);
+      state.to = toDateInputValue(pickerState.endDate);
+      state.preset = 'custom';
+      state.page = 1;
+      pickerState.hoverDate = null;
+
+      syncPresetButtons();
+      updateRangeSummary();
+      dpUpdateTriggerLabels();
+
+      dpSetCalendarOpen(false);
+      setStatus('Rango listo, pulsa Buscar', '');
+    }
+
+    function syncPickerFromState() {
+      pickerState.startDate = ymdToDate(state.from);
+      pickerState.endDate = ymdToDate(state.to);
+      pickerState.hoverDate = null;
+      pickerState.mode = null;
+
+      const anchorDate = pickerState.startDate || pickerState.today;
+      pickerState.leftYear = anchorDate.getFullYear();
+      pickerState.leftMonth = anchorDate.getMonth();
+      dpUpdateRightMonth();
+      dpUpdateTriggerLabels();
+      dpUpdateModeView();
+      dpRenderCalendar();
+    }
+
+    function syncPresetButtons() {
+      $('.range-preset').removeClass('active').attr('aria-pressed', 'false');
+      $(`.range-preset[data-range="${state.preset}"]`).addClass('active').attr('aria-pressed', 'true');
+    }
+
+    function updateRangeSummary() {
+      $('#pageSize').val(String(state.size));
+    }
+
+    function updatePaginationMeta() {
+      const lastPage = Math.max(1, Math.ceil(state.total / state.size));
+      $('#pageInfo').text(`Pagina ${state.page} de ${lastPage}`);
+      $('#resultMeta').text(`Mostrando ${state.currentCount} / ${state.total}`);
+      $('#prevPage').prop('disabled', state.page <= 1);
+      $('#nextPage').prop('disabled', state.page >= lastPage || state.total === 0);
+    }
+
+    function setRangePanelOpen(isOpen) {
+      const panel = $('#rangePanel');
+
+      panel.toggleClass('open', isOpen);
+
+      if (!isOpen) {
+        dpSetCalendarOpen(false);
+      }
+    }
+
+    function applyPreset(preset, shouldLoad = true) {
+      const range = buildPresetRange(preset);
+      state.from = range.from;
+      state.to = range.to;
+      state.preset = preset;
+      state.page = 1;
+
+      syncPickerFromState();
+      syncPresetButtons();
+      updateRangeSummary();
+
+      if (shouldLoad) {
+        loadEvents();
+      } else {
+        setStatus('Preset aplicado, pulsa Buscar', '');
+      }
+    }
 
     function formatDate(value) {
       if (!value) return '-';
@@ -226,18 +820,28 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
       });
     }
 
-    function updatePaginationMeta() {
-      const lastPage = Math.max(1, Math.ceil(state.total / state.size));
-      $('#pageInfo').text(`Pagina ${state.page} de ${lastPage}`);
-      $('#resultMeta').text(`Total: ${state.total}`);
-      $('#prevPage').prop('disabled', state.page <= 1);
-      $('#nextPage').prop('disabled', state.page >= lastPage);
+    function getVisibleEvents() {
+      if (!Array.isArray(state.allEvents) || !state.allEvents.length) {
+        return [];
+      }
+
+      const start = Math.max(0, (state.page - 1) * state.size);
+      const end = start + state.size;
+      return state.allEvents.slice(start, end);
     }
 
-    function buildQueryParams() {
+    function renderCurrentPage() {
+      const visibleEvents = getVisibleEvents();
+      state.total = Array.isArray(state.allEvents) ? state.allEvents.length : 0;
+      state.currentCount = visibleEvents.length;
+      renderRows(visibleEvents);
+      updatePaginationMeta();
+    }
+
+    function buildSearchQueryParams(page = 1, size = 100) {
       const params = new URLSearchParams();
-      params.set('page', String(state.page));
-      params.set('size', String(state.size));
+      params.set('page', String(page));
+      params.set('size', String(size));
 
       if (state.from) {
         params.set('from', state.from);
@@ -250,31 +854,58 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
       return params.toString();
     }
 
+    function fetchAllEvents(onSuccess, onError) {
+      const pageSize = 100;
+      const collected = [];
+
+      function fetchPage(page) {
+        $.ajax({
+          url: `${API_BASE_URL}/events?${buildSearchQueryParams(page, pageSize)}`,
+          method: 'GET',
+          dataType: 'json'
+        })
+          .done(function (response) {
+            const events = Array.isArray(response.data) ? response.data : [];
+            const total = Number((response.meta && response.meta.total) || events.length || 0);
+            const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+            collected.push(...events);
+
+            if (page < totalPages && events.length > 0) {
+              fetchPage(page + 1);
+              return;
+            }
+
+            onSuccess(collected);
+          })
+          .fail(onError);
+      }
+
+      fetchPage(1);
+    }
+
     function loadEvents() {
-      setStatus('Cargando...', '');
+      setStatus('Consultando eventos...', '');
       setAlert('');
 
-      $.ajax({
-        url: `${API_BASE_URL}/events?${buildQueryParams()}`,
-        method: 'GET',
-        dataType: 'json'
-      })
-        .done(function (response) {
-          const events = response.data || [];
-          state.total = (response.meta && response.meta.total) || 0;
-
-          renderRows(events);
-          updatePaginationMeta();
-          setStatus('Datos cargados', 'success');
-        })
-        .fail(function (xhr) {
+      fetchAllEvents(
+        function (events) {
+          state.allEvents = events;
+          state.page = 1;
+          renderCurrentPage();
+          setStatus(`${state.total} eventos`, 'success');
+        },
+        function (xhr) {
           const detail = xhr.responseJSON && xhr.responseJSON.detail ? String(xhr.responseJSON.detail) : 'No fue posible cargar eventos.';
           setStatus('Error al cargar', 'error');
           setAlert(detail);
-          renderRows([]);
+          state.allEvents = [];
           state.total = 0;
+          state.currentCount = 0;
+          renderRows([]);
           updatePaginationMeta();
-        });
+        }
+      );
     }
 
     function loadEventDetail(eventId) {
@@ -306,30 +937,190 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
     }
 
     $(function () {
-      $('#filtersForm').on('submit', function (event) {
+      pickerState.today = new Date();
+      pickerState.today.setHours(0, 0, 0, 0);
+
+      const defaultRange = buildPresetRange('24h');
+      state.from = defaultRange.from;
+      state.to = defaultRange.to;
+      state.preset = '24h';
+      syncPresetButtons();
+      updateRangeSummary();
+      setRangePanelOpen(false);
+      syncPickerFromState();
+
+      $('#trig-start').on('dblclick', function () {
+        dpToggleFor('start');
+      });
+
+      $('#trig-end').on('dblclick', function () {
+        dpToggleFor('end');
+      });
+
+      $('.dp-trigger-toggle').on('click', function (event) {
         event.preventDefault();
-        state.from = String($('#fromDate').val() || '');
-        state.to = String($('#toDate').val() || '');
-        state.size = Number($('#pageSize').val() || 10);
+        event.stopPropagation();
+
+        const mode = String($(this).data('open-mode') || 'start');
+        dpToggleFor(mode);
+      });
+
+      $('#trig-start, #trig-end').on('input', function () {
+        applyDateInputMask(this);
+      });
+
+      $('#trig-start, #trig-end').on('blur', function () {
+        applyDateInputMask(this);
+        syncPickerFromManualInputs(true);
+      });
+
+      $('#trig-start, #trig-end').on('keydown', function (event) {
+        const key = String(event.key || '');
+
+        if (key === 'ArrowDown') {
+          event.preventDefault();
+          dpToggleFor(this.id === 'trig-end' ? 'end' : 'start');
+          return;
+        }
+
+        if (event.key !== 'Enter') {
+          const controlKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End'];
+          if (event.ctrlKey || event.metaKey || controlKeys.includes(key)) {
+            return;
+          }
+
+          if (/^\d$/.test(key)) {
+            const digits = extractDateDigits($(this).val());
+            if (digits.length >= 8) {
+              event.preventDefault();
+            }
+            return;
+          }
+
+          event.preventDefault();
+          return;
+        }
+
+        event.preventDefault();
+        if (!syncPickerFromManualInputs(true)) {
+          return;
+        }
+
+        if (pickerState.startDate && pickerState.endDate) {
+          dpSetCalendarOpen(false);
+          setStatus('Rango listo, pulsa Buscar', '');
+        }
+      });
+
+      $('#rangePanel').on('click', '.dp-nav-btn', function (event) {
+        event.stopPropagation();
+
+        if ($(this).prop('disabled')) {
+          return;
+        }
+
+        const nav = String($(this).data('nav') || '');
+        if (nav === 'prev') {
+          dpPrevMonth();
+        } else if (nav === 'next') {
+          dpNextMonth();
+        }
+      });
+
+      $('#rangePanel').on('click', '.dp-day[data-date]', function (event) {
+        event.stopPropagation();
+
+        const dateStr = String($(this).data('date') || '');
+        const date = ymdToDate(dateStr);
+        if (!date) {
+          return;
+        }
+        dpPickDate(date);
+      });
+
+      $('#rangePanel').on('mouseenter', '.dp-day[data-date]', function () {
+        if (pickerState.mode !== 'end' || !pickerState.startDate || pickerState.endDate) {
+          return;
+        }
+
+        const dateStr = String($(this).data('date') || '');
+        const date = ymdToDate(dateStr);
+        if (!date || date < pickerState.startDate) {
+          return;
+        }
+
+        const nextHoverTs = date.getTime();
+        const currentHoverTs = pickerState.hoverDate ? pickerState.hoverDate.getTime() : null;
+        if (currentHoverTs === nextHoverTs) {
+          return;
+        }
+
+        pickerState.hoverDate = date;
+        dpRenderCalendar();
+      });
+
+      $('#clearRangeBtn').on('click', function () {
+        dpClearSelection();
+      });
+
+      $('#pageSize').on('change', function () {
+        state.size = Number($(this).val() || 10);
         state.page = 1;
+        updateRangeSummary();
+        renderCurrentPage();
+      });
+
+      $('#applyFiltersBtn').on('click', function () {
+        if (!syncPickerFromManualInputs(true)) {
+          return;
+        }
+
+        if (!pickerState.startDate || !pickerState.endDate) {
+          setStatus('Falta seleccionar rango', 'error');
+          setAlert('Selecciona fecha desde y hasta para consultar.');
+          return;
+        }
+
+        state.from = toDateInputValue(pickerState.startDate);
+        state.to = toDateInputValue(pickerState.endDate);
+        state.page = 1;
+        setAlert('');
         loadEvents();
       });
 
-      $('#resetFilters').on('click', function () {
-        $('#fromDate').val('');
-        $('#toDate').val('');
-        $('#pageSize').val('10');
-        state.from = '';
-        state.to = '';
-        state.size = 10;
-        state.page = 1;
-        loadEvents();
+      $('.range-preset').on('click', function () {
+        const preset = String($(this).data('range') || 'custom');
+        if (preset === 'custom') {
+          state.preset = 'custom';
+          syncPresetButtons();
+          updateRangeSummary();
+          setRangePanelOpen(true);
+          dpOpenFor('start');
+          return;
+        }
+
+        applyPreset(preset, true);
+      });
+
+      $(document).on('click', function (event) {
+        const target = $(event.target);
+        const insidePicker = target.closest('.dp-picker-card').length > 0;
+        const isTrigger = target.closest('#trig-start, #trig-end, .dp-trigger-field, .dp-trigger-toggle').length > 0;
+        if (!insidePicker && !isTrigger) {
+          dpSetCalendarOpen(false);
+        }
+      });
+
+      $(document).on('keydown', function (event) {
+        if (event.key === 'Escape') {
+          dpSetCalendarOpen(false);
+        }
       });
 
       $('#prevPage').on('click', function () {
         if (state.page > 1) {
           state.page -= 1;
-          loadEvents();
+          renderCurrentPage();
         }
       });
 
@@ -337,7 +1128,7 @@ $apiBaseUrl = rtrim($apiBaseUrl, '/');
         const lastPage = Math.max(1, Math.ceil(state.total / state.size));
         if (state.page < lastPage) {
           state.page += 1;
-          loadEvents();
+          renderCurrentPage();
         }
       });
 

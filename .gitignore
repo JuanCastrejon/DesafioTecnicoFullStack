@@ -42,3 +42,5 @@ test-results/
 # Documentacion interna (uso personal)
 supabase/.temp/
 .supabase_db_password.local
+docs/defensa-tecnica-equipo-desarrollo.md
+docs/def.md

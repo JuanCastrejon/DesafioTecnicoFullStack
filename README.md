@@ -96,13 +96,41 @@ Esta separacion evita el fallback silencioso y deja explicito el trade-off opera
 
 ### 1) API local (FastAPI en 8010)
 
-Desde PowerShell:
+Hay dos formas utiles de levantar la API localmente fuera de Docker:
+
+#### Opcion A: demo local sin depender de PostgreSQL
+
+Usa fallback en memoria. Es la forma mas simple si solo quieres probar la API y la demo sin configurar base de datos.
 
 ```powershell
 Set-Location "desafio-tecnico-full-stack/backend"
 $env:CORS_ORIGINS="http://localhost:8080,http://127.0.0.1:8080,http://localhost:8089,http://127.0.0.1:8089,http://localhost:8090,http://127.0.0.1:8090"
+$env:ENABLE_IN_MEMORY_FALLBACK="true"
+$env:RUN_DB_BOOTSTRAP="false"
+$env:SEED_EVENTS="false"
 c:/Users/juand/source/repos/DesafioTecnicoFullStack/.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 ```
+
+#### Opcion B: API local conectada a PostgreSQL o Supabase
+
+Si quieres validar persistencia real fuera de Docker, entonces si debes definir `DATABASE_URL`.
+
+Puedes hacerlo con variables de entorno en PowerShell o creando `backend/.env` a partir de `backend/.env.example`.
+
+Ejemplo con variables en PowerShell:
+
+```powershell
+Set-Location "desafio-tecnico-full-stack/backend"
+$env:CORS_ORIGINS="http://localhost:8080,http://127.0.0.1:8080,http://localhost:8089,http://127.0.0.1:8089,http://localhost:8090,http://127.0.0.1:8090"
+$env:DATABASE_URL="postgresql+psycopg://postgres.<project-id>:<password>@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
+$env:ENABLE_IN_MEMORY_FALLBACK="false"
+c:/Users/juand/source/repos/DesafioTecnicoFullStack/.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8010
+```
+
+Nota:
+
+- si no defines `DATABASE_URL`, la app intentara usar `postgresql+psycopg://postgres:postgres@localhost:5432/events_db`;
+- si tampoco tienes esa DB local disponible y `ENABLE_IN_MEMORY_FALLBACK=false`, `GET /events` y `GET /ready` fallaran.
 
 ### 2) Demo PHP local (index.php en 8089)
 
@@ -151,22 +179,72 @@ Notas:
 
 ## Levantar con Docker Compose
 
-1. Copiar variables de entorno:
-- backend/.env.example -> backend/.env
+### Aclaracion sobre variables de entorno
 
-2. Modo base (sin DB local, fallback en memoria):
+En el estado actual del proyecto, `backend/.env` no es obligatorio para usar Docker Compose.
+
+Modos disponibles:
+
+- Modo base:
+  - no requiere `backend/.env`
+  - usa `ENABLE_IN_MEMORY_FALLBACK=true`
+  - permite levantar API + demo aun sin PostgreSQL disponible
+- Modo con DB local:
+  - no requiere `backend/.env`
+  - usa `docker-compose.local-db.yml` para provisionar PostgreSQL en contenedor
+- Modo apuntando a Supabase u otra DB externa:
+  - requiere definir `DATABASE_URL`
+  - lo mas claro es exportarla en tu shell o definirla en un `.env` en la raiz del repositorio antes de ejecutar `docker compose`
+
+`backend/.env.example` queda como referencia util para ejecucion local fuera de Docker o para documentar el formato esperado de variables, pero no es un prerrequisito para levantar Compose en los modos validados del repositorio.
+
+### 1) Modo base (sin DB local, fallback en memoria)
 
 ```bash
 docker compose up --build
 ```
 
-3. Modo con PostgreSQL local en contenedor:
+Comportamiento esperado:
+
+- API en `http://localhost:8000`
+- Demo PHP en `http://localhost:8080`
+- `GET /health` responde OK
+- `GET /events` responde usando fallback en memoria si no hay DB
+
+### 2) Modo con PostgreSQL local en contenedor
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.local-db.yml up --build
 ```
 
-4. Smoke test automatizado de Docker Compose:
+Comportamiento esperado:
+
+- PostgreSQL se levanta en el servicio `db`
+- la API usa `DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/events_db`
+- `RUN_DB_BOOTSTRAP=true`
+- `SEED_EVENTS=true`
+- `ENABLE_IN_MEMORY_FALLBACK=false`
+
+### 3) Opcional: usar una base externa como Supabase desde Docker Compose
+
+Si quieres levantar el contenedor `api` apuntando a Supabase en lugar de `db`, define antes `DATABASE_URL` en tu entorno.
+
+Ejemplo en PowerShell:
+
+```powershell
+$env:DATABASE_URL="postgresql+psycopg://postgres.<project-id>:<password>@aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
+docker compose up --build
+```
+
+Si usas una DB externa, conviene revisar tambien estas variables segun el caso:
+
+```powershell
+$env:ENABLE_IN_MEMORY_FALLBACK="false"
+$env:RUN_DB_BOOTSTRAP="false"
+$env:SEED_EVENTS="false"
+```
+
+### 4) Smoke test automatizado de Docker Compose:
 
 ```powershell
 ./scripts/smoke-docker-compose.ps1
